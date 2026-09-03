@@ -1,4 +1,4 @@
-{% extends 'reviewer/base.html' %}
+{% extends 'courses/base.html' %}
 
 {% block title %}{{ course.title }} — StudyQuest{% endblock %}
 
@@ -8,7 +8,7 @@
             <h1>{{ course.title }}</h1>
             <p class="subtitle">{{ course.description }}</p>
         </div>
-        <a class="btn btn-ghost" href="{% url 'reviewer:course_list' %}">&larr; All courses</a>
+        <a class="btn btn-ghost" href="{% url 'courses:course_list' %}">&larr; All courses</a>
     </div>
 
     <h2>Quest Map</h2>
@@ -20,9 +20,9 @@
                     <div class="quest-node-body">
                         <h3>{{ chapter.title }}</h3>
                         <div class="quest-node-actions">
-                            <a class="btn btn-secondary" href="{% url 'reviewer:chapter_review' chapter.pk %}">Review</a>
+                            <a class="btn btn-secondary" href="{% url 'courses:chapter_review' chapter.pk %}">Review</a>
                             {% if chapter.quiz %}
-                                <a class="btn btn-accent" href="{% url 'reviewer:chapter_quiz' chapter.pk %}">Quiz</a>
+                                <a class="btn btn-accent" href="{% url 'courses:chapter_quiz' chapter.pk %}">Quiz</a>
                             {% endif %}
                         </div>
                     </div>

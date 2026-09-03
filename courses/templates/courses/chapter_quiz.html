@@ -1,4 +1,4 @@
-{% extends 'reviewer/base.html' %}
+{% extends 'courses/base.html' %}
 {% load static %}
 
 {% block title %}{{ chapter.title }} — Quiz{% endblock %}
@@ -6,7 +6,7 @@
 {% block content %}
     <div class="page-header">
         <h1>{{ chapter.title }} — Quiz</h1>
-        <a class="btn btn-ghost" href="{% url 'reviewer:chapter_review' chapter.pk %}">&larr; Back to review</a>
+        <a class="btn btn-ghost" href="{% url 'courses:chapter_review' chapter.pk %}">&larr; Back to review</a>
     </div>
 
     {% if quiz and quiz.questions.all %}
@@ -20,7 +20,7 @@
             <div id="quiz-result" class="quiz-result hidden">
                 <h2>Quest Complete! 🎉</h2>
                 <p id="quiz-score"></p>
-                <a class="btn btn-primary" href="{% url 'reviewer:course_detail' chapter.course.pk %}">Back to Quest Map</a>
+                <a class="btn btn-primary" href="{% url 'courses:course_detail' chapter.course.pk %}">Back to Quest Map</a>
             </div>
         </div>
 
@@ -40,7 +40,7 @@
                 ]
             }
         </script>
-        <script src="{% static 'reviewer/js/quiz.js' %}"></script>
+        <script src="{% static 'courses/js/quiz.js' %}"></script>
     {% else %}
         <p class="empty-state">No quiz questions yet for this chapter.</p>
     {% endif %}

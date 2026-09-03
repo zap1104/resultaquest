@@ -1,0 +1,161 @@
+{% extends 'courses/base.html' %}
+{% load static %}
+
+{% block title %}Forge Quest — StudyQuest{% endblock %}
+
+{% block page_class %}forge-page-wrap{% endblock %}
+
+{% block content %}
+<div class="forge-container">
+    
+    <div class="forge-header text-center">
+        <span class="section-tag">⚡ THE FORGE</span>
+        <h1 class="hero-greeting">Forge a New Quest</h1>
+        <p class="subtitle">Upload your study materials and let AI build your learning journey.</p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="forge-form">
+        {% csrf_token %}
+        
+        <!-- Interactive Drop Zone -->
+        <div class="card drop-zone" id="drop-zone">
+            <!-- STATE 1: Empty -->
+            <div id="drop-empty-state">
+                <div class="upload-icon-wrap">
+                    <span class="upload-icon">📄</span>
+                </div>
+                <h2 class="drop-title">Drag & Drop Study Materials</h2>
+                <p class="drop-subtitle">or <label for="file-upload" class="browse-link">Browse Files</label></p>
+            </div>
+
+            <!-- STATE 2: File Selected -->
+            <div id="drop-selected-state" class="hidden">
+                <div class="upload-icon-wrap success-pulse">
+                    <span class="upload-icon">✅</span>
+                </div>
+                <h2 class="drop-title text-accent">Material Ready</h2>
+                
+                <div class="file-preview-card">
+                    <span class="file-preview-icon">📝</span>
+                    <div class="file-details">
+                        <span class="file-name" id="file-name">filename.pdf</span>
+                        <span class="file-size" id="file-size">1.8 MB</span>
+                    </div>
+                    <button type="button" class="remove-btn" id="remove-file" title="Remove file">✕</button>
+                </div>
+            </div>
+
+            <input type="file" id="file-upload" name="content_file" class="hidden-file-input" accept=".pdf,.docx,.txt">
+        </div>
+
+        <div class="supported-formats text-center">
+            <strong>Supported Materials:</strong> 
+            <span>✓ Syllabus</span>
+            <span>✓ Modules</span>
+            <span>✓ Lecture Notes</span>
+            <span>✓ Assignments</span>
+            <span>✓ Study Guides</span>
+        </div>
+
+        <!-- Educational & Limit Cards -->
+        <div class="info-card-grid">
+            <!-- Best Results Card -->
+            <div class="card info-card tip-card">
+                <div class="info-card-header">
+                    <span class="info-icon">💡</span>
+                    <h3>Best Results</h3>
+                </div>
+                <ul class="info-list">
+                    <li>Upload a complete module or syllabus</li>
+                    <li>Include multiple lesson topics</li>
+                    <li><strong>1,000+ words</strong> recommended</li>
+                    <li>Structured content improves AI accuracy</li>
+                </ul>
+            </div>
+
+            <!-- Free Plan Limits -->
+            <div class="card info-card limit-card">
+                <div class="info-card-header">
+                    <span class="info-icon">📦</span>
+                    <h3>Free Plan Limits</h3>
+                </div>
+                <ul class="info-list">
+                    <li><strong>1 upload</strong> per course</li>
+                    <li>Maximum <strong>10 pages</strong></li>
+                    <li>Standard Gemini AI generation</li>
+                </ul>
+            </div>
+
+            <!-- Premium Teaser -->
+            <div class="card info-card premium-card">
+                <div class="info-card-header">
+                    <span class="info-icon">⭐</span>
+                    <h3 class="premium-text">Premium</h3>
+                    <span class="chip chip-gold ml-auto">Soon</span>
+                </div>
+                <ul class="info-list">
+                    <li>Unlimited uploads</li>
+                    <li>Unlimited pages</li>
+                    <li>Advanced learning paths</li>
+                    <li>Detailed analytics</li>
+                </ul>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-chunky btn-block forge-btn">
+            Generate My Quest &rarr;
+        </button>
+    </form>
+</div>
+
+<script>
+    const fileInput = document.getElementById('file-upload');
+    const dropZone = document.getElementById('drop-zone');
+    const emptyState = document.getElementById('drop-empty-state');
+    const selectedState = document.getElementById('drop-selected-state');
+    const fileNameDisplay = document.getElementById('file-name');
+    const fileSizeDisplay = document.getElementById('file-size');
+    const removeBtn = document.getElementById('remove-file');
+
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            fileNameDisplay.textContent = file.name;
+            
+            let size = (file.size / (1024 * 1024)).toFixed(2);
+            fileSizeDisplay.textContent = size > 0.01 ? size + ' MB' : (file.size / 1024).toFixed(1) + ' KB';
+            
+            emptyState.classList.add('hidden');
+            selectedState.classList.remove('hidden');
+            dropZone.classList.add('has-file');
+        }
+    });
+
+    removeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        fileInput.value = '';
+        emptyState.classList.remove('hidden');
+        selectedState.classList.add('hidden');
+        dropZone.classList.remove('has-file');
+    });
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            if (!dropZone.classList.contains('has-file')) dropZone.classList.add('dragover');
+        }, false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+    });
+    dropZone.addEventListener('drop', function(e) {
+        let dt = e.dataTransfer;
+        let files = dt.files;
+        fileInput.files = files;
+        fileInput.dispatchEvent(new Event('change'));
+    });
+</script>
+{% endblock %}
