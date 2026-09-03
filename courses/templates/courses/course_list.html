@@ -1,0 +1,40 @@
+{% extends 'courses/base.html' %}
+{% load static %}
+
+{% block title %}Quest Library — StudyQuest{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Quest Library</h1>
+        <p class="subtitle">Your complete archive of forged courses and study materials.</p>
+    </div>
+    <a href="{% url 'courses:course_create' %}" class="btn btn-primary">+ Forge New Quest</a>
+</div>
+
+{% if courses %}
+    <div class="card-grid">
+        {% for course in courses %}
+            <a class="card course-card" href="{% url 'courses:course_detail' course.pk %}">
+                <h3>{{ course.title }}</h3>
+                <p>{{ course.description|default:"No description provided."|truncatechars:75 }}</p>
+                <div style="margin-top: 12px;">
+                    <span class="chip chip-accent">{{ course.chapters.count }} Chapter{{ course.chapters.count|pluralize }}</span>
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+{% else %}
+    <!-- Empty State for the Library -->
+    <div class="card empty-dashboard" style="margin-top: 24px;">
+        <div class="empty-icon-wrap" style="font-size: 3rem; margin-bottom: 12px;">📚</div>
+        <h2>Your library is empty</h2>
+        <p class="empty-subtext">
+            You haven't forged any quests yet. Once you upload your study materials, they will be archived here.
+        </p>
+        <a href="{% url 'courses:course_create' %}" class="btn btn-primary btn-chunky" style="margin-top: 16px;">
+            Forge Your First Quest &rarr;
+        </a>
+    </div>
+{% endif %}
+{% endblock %}

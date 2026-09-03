@@ -1,0 +1,71 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}StudyQuest{% endblock %}</title>
+
+    <script>
+        const savedTheme = localStorage.getItem('studyquest_theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <link rel="stylesheet" href="{% static 'courses/css/style.css' %}">
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="{% url 'courses:dashboard' %}">🎮 StudyQuest</a>
+        
+        {% if user.is_authenticated %}
+            <div class="stats">
+                <span class="stat" title="Level">🏅 Lv. {{ user.userprofile.current_level|default:1 }}</span>
+                <span class="stat" title="XP">⭐ {{ user.userprofile.total_xp|default:0 }} XP</span>
+                <span class="stat" title="Streak">🔥 {{ user.userprofile.streak_days|default:0 }} day streak</span>
+                <form method="post" action="{% url 'logout' %}" style="display:inline; margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">Log Out</button>
+                </form>
+            </div>
+        {% endif %}
+    </header>
+
+    <main class="page {% block page_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>StudyQuest &copy; 2026 — AI-Powered Gamified Learning Platform</p>
+    </footer>
+
+    <button id="theme-toggle" class="theme-toggle-fab" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+    </button>
+
+    <script>
+        (function() {
+            const root = document.documentElement;
+            const btn = document.getElementById('theme-toggle');
+            let current = localStorage.getItem('studyquest_theme') || 'light';
+
+            btn.addEventListener('click', () => {
+                current = current === 'light' ? 'dark' : 'light';
+                root.setAttribute('data-theme', current);
+                localStorage.setItem('studyquest_theme', current);
+            });
+        })();
+    </script>
+</body>
+</html>
