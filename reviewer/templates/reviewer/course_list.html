@@ -1,0 +1,27 @@
+{% extends 'reviewer/base.html' %}
+
+{% block title %}My Courses — StudyQuest{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>My Courses</h1>
+        <a class="btn btn-primary" href="{% url 'reviewer:course_create' %}">+ New Course</a>
+    </div>
+
+    {% if courses %}
+        <div class="card-grid">
+            {% for course in courses %}
+                <a class="card course-card" href="{% url 'reviewer:course_detail' course.pk %}">
+                    <h3>{{ course.title }}</h3>
+                    <p>{{ course.description|default:"No description yet." }}</p>
+                    <span class="chip">{{ course.chapters.count }} chapter{{ course.chapters.count|pluralize }}</span>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>No courses yet. Start your first quest!</p>
+            <a class="btn btn-primary" href="{% url 'reviewer:course_create' %}">+ New Course</a>
+        </div>
+    {% endif %}
+{% endblock %}

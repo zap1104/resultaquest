@@ -1,0 +1,40 @@
+{% extends 'reviewer/base.html' %}
+
+{% block title %}New Course — StudyQuest{% endblock %}
+
+{% block content %}
+    <div class="modal-panel">
+        <div class="page-header">
+            <h1>Start a New Course</h1>
+            <a class="btn btn-ghost" href="{% url 'reviewer:course_list' %}">Cancel</a>
+        </div>
+        <p class="hint">
+            Paste in your syllabus, modules, activities, and assignments below. StudyQuest will turn
+            them into a personalized chapter-by-chapter review and quiz journey.
+            <strong>(AI processing is a placeholder for now — a sample chapter will be generated.)</strong>
+        </p>
+
+        <form method="post" class="stacked-form">
+            {% csrf_token %}
+            <label for="{{ form.title.id_for_label }}">Course title</label>
+            {{ form.title }}
+
+            <label for="{{ form.description.id_for_label }}">Short description</label>
+            {{ form.description }}
+
+            <label for="{{ form.syllabus_text.id_for_label }}">Syllabus</label>
+            {{ form.syllabus_text }}
+
+            <label for="{{ form.modules_text.id_for_label }}">Modules</label>
+            {{ form.modules_text }}
+
+            <label for="{{ form.activities_text.id_for_label }}">Activities</label>
+            {{ form.activities_text }}
+
+            <label for="{{ form.assignments_text.id_for_label }}">Assignments</label>
+            {{ form.assignments_text }}
+
+            <button type="submit" class="btn btn-primary btn-block">Generate My Course</button>
+        </form>
+    </div>
+{% endblock %}

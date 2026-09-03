@@ -1,0 +1,47 @@
+{% extends 'reviewer/base.html' %}
+{% load static %}
+
+{% block title %}{{ chapter.title }} — Quiz{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>{{ chapter.title }} — Quiz</h1>
+        <a class="btn btn-ghost" href="{% url 'reviewer:chapter_review' chapter.pk %}">&larr; Back to review</a>
+    </div>
+
+    {% if quiz and quiz.questions.all %}
+        <div id="quiz-app" class="quiz-app">
+            <div class="quiz-progress-track">
+                <div id="quiz-progress-fill" class="quiz-progress-fill"></div>
+            </div>
+
+            <div id="quiz-question-wrap"></div>
+
+            <div id="quiz-result" class="quiz-result hidden">
+                <h2>Quest Complete! 🎉</h2>
+                <p id="quiz-score"></p>
+                <a class="btn btn-primary" href="{% url 'reviewer:course_detail' chapter.course.pk %}">Back to Quest Map</a>
+            </div>
+        </div>
+
+        <script id="quiz-data" type="application/json">
+            {
+                "questions": [
+                    {% for q in quiz.questions.all %}
+                    {
+                        "text": "{{ q.text|escapejs }}",
+                        "choices": [
+                            {% for c in q.choices.all %}
+                            {"text": "{{ c.text|escapejs }}", "isCorrect": {{ c.is_correct|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}
+                            {% endfor %}
+                        ]
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            }
+        </script>
+        <script src="{% static 'reviewer/js/quiz.js' %}"></script>
+    {% else %}
+        <p class="empty-state">No quiz questions yet for this chapter.</p>
+    {% endif %}
+{% endblock %}

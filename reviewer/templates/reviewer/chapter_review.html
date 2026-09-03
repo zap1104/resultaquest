@@ -1,0 +1,21 @@
+{% extends 'reviewer/base.html' %}
+
+{% block title %}{{ chapter.title }} — Review{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>{{ chapter.title }}</h1>
+        <a class="btn btn-ghost" href="{% url 'reviewer:course_detail' chapter.course.pk %}">&larr; {{ chapter.course.title }}</a>
+    </div>
+
+    <div class="review-panel">
+        <span class="chip chip-accent">Chapter Review</span>
+        <div class="review-content">{{ chapter.review_content|linebreaks }}</div>
+    </div>
+
+    {% if has_quiz %}
+        <a class="btn btn-primary btn-block" href="{% url 'reviewer:chapter_quiz' chapter.pk %}">Ready — Start Quiz</a>
+    {% else %}
+        <p class="hint">No quiz generated for this chapter yet.</p>
+    {% endif %}
+{% endblock %}
