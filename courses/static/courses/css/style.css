@@ -1,3 +1,6 @@
+/* Pixel-accent font, used sparingly for game-flavor moments */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
 /* =========================================================
    1. THEME VARIABLES & PALETTES
    ========================================================= */
@@ -1158,4 +1161,33 @@ body {
 
 @media (max-width: 768px) {
     .info-card-grid { grid-template-columns: 1fr; }
+}
+
+.pixel-font {
+    font-family: 'Press Start 2P', 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+}
+
+/* "Into a Game." headline — pixelated, keeps the gradient-text color from .hero-highlight */
+.pixel-hero {
+    font-family: 'Press Start 2P', 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.70em;
+    line-height: 1.6;
+    display: inline-block;
+    margin-top: 6px;
+    letter-spacing: 0.01em;
+}
+
+/* Tighten the 3-pill row so it never wraps at normal widths */
+.feature-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+.feature-pills .pill {
+    white-space: nowrap;
+}
+@media (max-width: 640px) {
+    .feature-pills { flex-wrap: wrap; }
 }
