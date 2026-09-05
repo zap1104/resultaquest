@@ -9,6 +9,7 @@
     body { background: var(--bg); }
     .page { max-width: 760px; padding: 0 0 120px; margin: 0 auto; }
 
+    /* --- TOP HEADER & PROGRESS --- */
     .quiz-focus-header { display: flex; align-items: center; padding: 24px 20px 4px; gap: 20px; }
     .quiz-exit-btn { background: transparent; border: none; font-size: 1.5rem; color: var(--muted); cursor: pointer; line-height: 1; padding: 4px; text-decoration: none; transition: color 0.2s ease; }
     .quiz-exit-btn:hover { color: var(--danger); }
@@ -16,9 +17,9 @@
     .quiz-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
     .quiz-progress-label { text-align: center; color: var(--muted); font-size: 0.85rem; font-weight: 700; margin: 6px 0 0; }
 
-    .quiz-question-text { font-size: 1.4rem; font-weight: 800; margin: 32px 20px 24px; line-height: 1.4; text-align: center; }
+    /* --- ACTIVE QUIZ QUESTION VIEW --- */
+    .quiz-question-text { font-size: 1.4rem; font-weight: 800; margin: 32px 20px 24px; line-height: 1.4; text-align: center; color: var(--ink); }
 
-    /* 2x2 answer grid — collapses to 1 column under 600px */
     .quiz-choices {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -70,17 +71,18 @@
     .quiz-confirm-btn { display: block; width: calc(100% - 40px); margin: 28px 20px 0; padding: 16px; font-size: 1.05rem; }
     .quiz-confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
+    /* Submitted Anchor State */
     .quiz-submitted-anchor { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 45vh; text-align: center; }
-    .quiz-submitted-check { font-size: 2.5rem; margin-bottom: 8px; }
+    .quiz-submitted-check { font-size: 2.8rem; margin-bottom: 8px; }
     .quiz-submitted-title { font-size: 1.6rem; font-weight: 800; color: var(--ink); }
     .quiz-submitted-sub { color: var(--muted); margin-top: 8px; font-size: 0.95rem; }
-    .quiz-submitted-status { color: var(--primary); font-size: 0.85rem; font-weight: 700; margin-top: 4px; }
 
+    /* --- RESULT SHEET --- */
     .result-sheet {
         position: fixed; bottom: 0; left: 0; width: 100%;
         background: var(--surface); border-top: 1px solid var(--border);
         border-radius: 28px 28px 0 0; padding: 32px 24px 48px;
-        box-shadow: 0 -12px 40px rgba(0,0,0,0.15);
+        box-shadow: 0 -12px 40px rgba(0,0,0,0.3);
         transform: translateY(110%);
         transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         z-index: 1000; display: flex; flex-direction: column; align-items: center; gap: 18px;
@@ -93,11 +95,135 @@
     .sheet-stat-val.streak { color: #ff8a3d; }
     .sheet-stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-top: 6px; }
     .sheet-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
-    .sheet-review-btn { opacity: 0.5; cursor: not-allowed; }
+
+    /* --- REVIEW ANSWERS SECTION (v1) --- */
+    .quiz-review-wrap {
+        padding: 0 20px;
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .review-top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 20px 0 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+    }
+    .review-top-bar h2 { margin: 0; font-size: 1.35rem; color: var(--ink); }
+
+    .review-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .review-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+    .review-q-num {
+        font-size: 0.8rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+    }
+    .review-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 999px;
+    }
+    .review-status-badge.correct {
+        background: rgba(0, 194, 168, 0.15);
+        color: #00a892;
+    }
+    .review-status-badge.incorrect {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+    }
+
+    .review-q-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin: 0 0 18px;
+        line-height: 1.4;
+        color: var(--ink);
+    }
+
+    .review-choices {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+    @media (max-width: 600px) {
+        .review-choices { grid-template-columns: 1fr; }
+    }
+
+    .review-choice {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 2px solid var(--border);
+        background: var(--bg);
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--ink);
+    }
+
+    /* States */
+    .review-choice.choice-correct {
+        border-color: #00c2a8;
+        background: rgba(0, 194, 168, 0.08);
+        color: #007a68;
+    }
+    .review-choice.choice-wrong {
+        border-color: var(--danger);
+        background: rgba(239, 68, 68, 0.08);
+        color: var(--danger);
+    }
+    .review-choice.choice-neutral {
+        opacity: 0.55;
+    }
+
+    .choice-badge {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 3px 8px;
+        border-radius: 6px;
+        white-space: nowrap;
+    }
+    .choice-badge.badge-correct { background: #00c2a8; color: #fff; }
+    .choice-badge.badge-wrong { background: var(--danger); color: #fff; }
+
+    .review-footer {
+        display: flex;
+        gap: 14px;
+        margin-top: 32px;
+    }
+    .review-footer .btn { flex: 1; text-align: center; }
 </style>
 
 {% if quiz and quiz.questions.all %}
-    <div class="quiz-focus-header" data-chapter-title="{{ chapter.title }}">
+    <!-- FOCUS HEADER -->
+    <div class="quiz-focus-header">
         <a href="{% url 'courses:chapter_review' chapter.pk %}" class="quiz-exit-btn" title="Exit Quiz">✕</a>
         <div class="quiz-progress-top">
             <div id="quiz-progress-fill" class="quiz-progress-fill"></div>
@@ -105,25 +231,64 @@
     </div>
     <p id="quiz-progress-label" class="quiz-progress-label"></p>
 
+    <!-- CONTAINER 1: ACTIVE QUIZ -->
     <div id="quiz-question-wrap"></div>
 
-    <div id="result-sheet" class="result-sheet">
-        <h2 style="margin: 0; font-size: 1.6rem;">Quiz Complete! 🎉</h2>
-        <div class="sheet-stats">
-            <div class="sheet-stat-box"><div id="sheet-score" class="sheet-stat-val">0/0</div><div class="sheet-stat-label">Score</div></div>
-            <div class="sheet-stat-box"><div id="sheet-xp" class="sheet-stat-val gold">+0</div><div class="sheet-stat-label">XP Earned</div></div>
-            <div class="sheet-stat-box"><div id="sheet-level" class="sheet-stat-val">1</div><div class="sheet-stat-label">Level</div></div>
-            <div class="sheet-stat-box"><div id="sheet-streak" class="sheet-stat-val streak">0</div><div class="sheet-stat-label">Day Streak</div></div>
+    <!-- CONTAINER 2: REVIEW ANSWERS (Initially Hidden) -->
+    <div id="quiz-review-wrap" class="quiz-review-wrap" style="display: none;">
+        <div class="review-top-bar">
+            <h2>Answer Review</h2>
+            <button type="button" id="review-back-sheet-btn" class="btn btn-ghost" style="font-size: 0.85rem;">
+                Score Summary &rarr;
+            </button>
         </div>
-        <div class="sheet-actions">
-            <button type="button" class="btn btn-secondary sheet-review-btn" disabled title="Coming soon">Review Answers</button>
-            <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="btn btn-primary btn-chunky" style="text-align: center;">Continue Learning &rarr;</a>
+        <div id="review-cards-list"></div>
+        <div class="review-footer">
+            <button type="button" id="review-view-score-btn" class="btn btn-secondary">
+                View Score Summary
+            </button>
+            <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="btn btn-primary btn-chunky">
+                Continue Learning &rarr;
+            </a>
         </div>
     </div>
 
+    <!-- RESULT SHEET MODAL -->
+    <div id="result-sheet" class="result-sheet">
+        <h2 style="margin: 0; font-size: 1.6rem;">Quiz Complete! 🎉</h2>
+        <div class="sheet-stats">
+            <div class="sheet-stat-box">
+                <div id="sheet-score" class="sheet-stat-val">0/0</div>
+                <div class="sheet-stat-label">Score</div>
+            </div>
+            <div class="sheet-stat-box">
+                <div id="sheet-xp" class="sheet-stat-val gold">+0</div>
+                <div class="sheet-stat-label">XP Earned</div>
+            </div>
+            <div class="sheet-stat-box">
+                <div id="sheet-level" class="sheet-stat-val">1</div>
+                <div class="sheet-stat-label">Level</div>
+            </div>
+            <div class="sheet-stat-box">
+                <div id="sheet-streak" class="sheet-stat-val streak">0</div>
+                <div class="sheet-stat-label">Day Streak</div>
+            </div>
+        </div>
+        <div class="sheet-actions">
+            <button type="button" id="open-review-btn" class="btn btn-secondary">
+                Review Answers
+            </button>
+            <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="btn btn-primary btn-chunky" style="text-align: center;">
+                Continue Learning &rarr;
+            </a>
+        </div>
+    </div>
+
+    <!-- EMBEDDED QUIZ DATA -->
     <script id="quiz-data" type="application/json">
         {
             "chapterId": {{ chapter.pk }},
+            "submitUrl": "{% url 'courses:submit_quiz' chapter.pk %}",
             "questions": [
                 {% for q in quiz.questions.all %}
                 {
@@ -140,7 +305,185 @@
         }
     </script>
 
-    <script src="{% static 'courses/js/quiz.js' %}?v=6"></script>
+    <!-- INLINE QUIZ CONTROLLER (Avoids caching issues) -->
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const rawData = document.getElementById('quiz-data');
+        if (!rawData) return;
+        const quiz = JSON.parse(rawData.textContent);
+
+        const letters = ['A', 'B', 'C', 'D'];
+        let currentIndex = 0;
+        let selectedAnswers = {}; // { questionId: choiceId }
+        let serverResults = [];   // Stores the graded array from Django
+
+        const wrap = document.getElementById('quiz-question-wrap');
+        const progressFill = document.getElementById('quiz-progress-fill');
+        const progressLabel = document.getElementById('quiz-progress-label');
+        const resultSheet = document.getElementById('result-sheet');
+        const reviewWrap = document.getElementById('quiz-review-wrap');
+        const reviewList = document.getElementById('review-cards-list');
+        const openReviewBtn = document.getElementById('open-review-btn');
+
+        function getCookie(name) {
+            const parts = (`; ${document.cookie}`).split(`; ${name}=`);
+            return parts.length === 2 ? parts.pop().split(';').shift() : '';
+        }
+
+        function renderCurrentQuestion() {
+            const q = quiz.questions[currentIndex];
+            const isLast = currentIndex === quiz.questions.length - 1;
+
+            // Update Progress Bar
+            const pct = Math.round(((currentIndex + 1) / quiz.questions.length) * 100);
+            progressFill.style.width = `${pct}%`;
+            progressLabel.textContent = `Question ${currentIndex + 1} of ${quiz.questions.length}`;
+
+            wrap.innerHTML = `
+                <div class="quiz-question-text">${q.text}</div>
+                <div class="quiz-choices">
+                    ${q.choices.map((c, i) => `
+                        <button type="button" class="quiz-option ${selectedAnswers[q.id] === c.id ? 'selected' : ''}" data-choice-id="${c.id}">
+                            <span class="quiz-letter">${letters[i] || ''}</span>
+                            <span>${c.text}</span>
+                        </button>
+                    `).join('')}
+                </div>
+                <button type="button" id="confirm-btn" class="btn btn-primary btn-chunky quiz-confirm-btn" ${selectedAnswers[q.id] ? '' : 'disabled'}>
+                    ${isLast ? 'Submit Quiz &rarr;' : 'Confirm Answer &rarr;'}
+                </button>
+            `;
+
+            // Selection Event
+            wrap.querySelectorAll('.quiz-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const choiceId = parseInt(btn.dataset.choiceId, 10);
+                    selectedAnswers[q.id] = choiceId;
+                    renderCurrentQuestion();
+                });
+            });
+
+            // Confirmation / Advance Event
+            document.getElementById('confirm-btn').addEventListener('click', () => {
+                if (isLast) {
+                    submitQuiz();
+                } else {
+                    currentIndex++;
+                    renderCurrentQuestion();
+                }
+            });
+        }
+
+        async function submitQuiz() {
+            wrap.innerHTML = `
+                <div class="quiz-submitted-anchor">
+                    <div class="quiz-submitted-check">⚡</div>
+                    <div class="quiz-submitted-title">Grading Your Quiz...</div>
+                    <div class="quiz-submitted-sub">Calculating XP and updating your streak</div>
+                </div>
+            `;
+
+            try {
+                const res = await fetch(quiz.submitUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ answers: selectedAnswers })
+                });
+
+                if (!res.ok) throw new Error('Grading failed');
+                const data = await res.json();
+
+                // Store results for Review mode
+                serverResults = data.results || [];
+
+                // Fill Result Sheet
+                document.getElementById('sheet-score').textContent = `${data.score}/${data.total_questions}`;
+                document.getElementById('sheet-xp').textContent = `+${data.xp_earned}`;
+                document.getElementById('sheet-level').textContent = data.new_level;
+                document.getElementById('sheet-streak').textContent = data.new_streak;
+
+                // Slide Up Result Sheet
+                resultSheet.classList.add('open');
+            } catch (err) {
+                console.error(err);
+                wrap.innerHTML = `
+                    <div class="quiz-submitted-anchor">
+                        <div class="quiz-submitted-title" style="color: var(--danger);">Submission Failed</div>
+                        <div class="quiz-submitted-sub">Check your connection and try again.</div>
+                    </div>
+                `;
+            }
+        }
+
+        // --- REVIEW ANSWERS CONTROLLER ---
+        function renderReviewScreen() {
+            reviewList.innerHTML = quiz.questions.map((q, qIndex) => {
+                // Find result for this question
+                const res = serverResults.find(r => r.question_id === q.id) || {};
+                const userChoiceId = selectedAnswers[q.id];
+                const correctChoiceId = res.correct_choice_id;
+                const isCorrect = res.is_correct;
+
+                return `
+                    <article class="review-card">
+                        <div class="review-card-header">
+                            <span class="review-q-num">Question ${qIndex + 1}</span>
+                            <span class="review-status-badge ${isCorrect ? 'correct' : 'incorrect'}">
+                                ${isCorrect ? '✓ Correct (+10 XP)' : '✕ Incorrect (0 XP)'}
+                            </span>
+                        </div>
+                        <h3 class="review-q-title">${q.text}</h3>
+                        <div class="review-choices">
+                            ${q.choices.map((c, i) => {
+                                const isUserPick = c.id === userChoiceId;
+                                const isActualCorrect = c.id === correctChoiceId;
+
+                                let choiceClass = 'choice-neutral';
+                                let badgeHtml = '';
+
+                                if (isActualCorrect) {
+                                    choiceClass = 'choice-correct';
+                                    badgeHtml = `<span class="choice-badge badge-correct">${isUserPick ? 'Your Choice ✓' : 'Correct Answer'}</span>`;
+                                } else if (isUserPick) {
+                                    choiceClass = 'choice-wrong';
+                                    badgeHtml = `<span class="choice-badge badge-wrong">Your Choice ✕</span>`;
+                                }
+
+                                return `
+                                    <div class="review-choice ${choiceClass}">
+                                        <span><strong>${letters[i]}.</strong> ${c.text}</span>
+                                        ${badgeHtml}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            // Hide active question wrap, close sheet, show review
+            wrap.style.display = 'none';
+            resultSheet.classList.remove('open');
+            reviewWrap.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Hook Review Trigger Buttons
+        openReviewBtn.addEventListener('click', renderReviewScreen);
+
+        // Re-open Sheet from Review mode
+        const reopenSheet = () => resultSheet.classList.add('open');
+        document.getElementById('review-view-score-btn').addEventListener('click', reopenSheet);
+        document.getElementById('review-back-sheet-btn').addEventListener('click', reopenSheet);
+
+        // Initial Start
+        renderCurrentQuestion();
+    });
+    </script>
 {% else %}
     <div style="padding: 60px 20px; text-align: center;">
         <p class="empty-state">No quiz questions yet for this chapter.</p>
