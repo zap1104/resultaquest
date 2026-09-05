@@ -3,19 +3,59 @@
 {% block title %}{{ chapter.title }} — Review{% endblock %}
 
 {% block content %}
+<style>
+    .review-page-wrap {
+        max-width: 680px;
+        margin: 0 auto;
+        padding-bottom: 64px;
+    }
+    .review-context-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(108, 92, 231, 0.1);
+        color: var(--primary);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        padding: 6px 14px;
+        border-radius: 999px;
+        margin-bottom: 20px;
+    }
+    .review-content {
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: var(--ink);
+    }
+    .review-content p { margin: 0 0 1.2em; }
+    
+    .review-cta-wrap {
+        margin-top: 48px;
+        text-align: center;
+        padding-top: 32px;
+        border-top: 1px solid var(--border);
+    }
+</style>
+
+<div class="review-page-wrap">
     <div class="page-header">
         <h1>{{ chapter.title }}</h1>
-        <a class="btn btn-ghost" href="{% url 'courses:course_detail' chapter.course.pk %}">&larr; {{ chapter.course.title }}</a>
+        <a class="btn btn-ghost" href="{% url 'courses:course_detail' chapter.course.pk %}">&larr; Back to Learning Path</a>
     </div>
 
-    <div class="review-panel">
-        <span class="chip chip-accent">Chapter Review</span>
+    <div class="review-panel" style="background: transparent; border: none; padding: 0;">
+        <span class="review-context-badge">🤖 AI-Generated Summary</span>
         <div class="review-content">{{ chapter.review_content|linebreaks }}</div>
     </div>
 
-    {% if has_quiz %}
-        <a class="btn btn-primary btn-block" href="{% url 'courses:chapter_quiz' chapter.pk %}">Ready — Start Quiz</a>
-    {% else %}
-        <p class="hint">No quiz generated for this chapter yet.</p>
-    {% endif %}
+    <div class="review-cta-wrap">
+        {% if has_quiz %}
+            <a class="btn btn-primary btn-chunky" href="{% url 'courses:chapter_quiz' chapter.pk %}" style="width: 100%; max-width: 320px;">
+                Ready — Start Quiz &rarr;
+            </a>
+        {% else %}
+            <p class="hint">No quiz generated for this chapter yet.</p>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}

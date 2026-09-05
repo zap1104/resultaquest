@@ -1,35 +1,157 @@
 {% extends 'courses/base.html' %}
+{% load static %}
 
 {% block title %}{{ course.title }} — StudyQuest{% endblock %}
 
 {% block content %}
-    <div class="page-header">
-        <div>
-            <h1>{{ course.title }}</h1>
-            <p class="subtitle">{{ course.description }}</p>
-        </div>
-        <a class="btn btn-ghost" href="{% url 'courses:course_list' %}">&larr; All courses</a>
-    </div>
+<style>
+    .path-container {
+        position: relative;
+        margin-top: 32px;
+        padding-left: 8px;
+    }
 
-    <h2>Quest Map</h2>
-    {% if course.chapters.all %}
-        <ol class="quest-map">
-            {% for chapter in course.chapters.all %}
-                <li class="quest-node">
-                    <div class="quest-node-icon">{{ forloop.counter }}</div>
-                    <div class="quest-node-body">
-                        <h3>{{ chapter.title }}</h3>
-                        <div class="quest-node-actions">
-                            <a class="btn btn-secondary" href="{% url 'courses:chapter_review' chapter.pk %}">Review</a>
-                            {% if chapter.quiz %}
-                                <a class="btn btn-accent" href="{% url 'courses:chapter_quiz' chapter.pk %}">Quiz</a>
-                            {% endif %}
-                        </div>
+    .path-node-row {
+        position: relative;
+        display: flex;
+        gap: 20px;
+        padding-bottom: 32px;
+    }
+    .path-node-row:last-child { padding-bottom: 0; }
+
+    /* Vertical connector line — drawn behind the circle, spans to the next node */
+    .path-node-row:not(:last-child)::before {
+        content: '';
+        position: absolute;
+        left: 23px;
+        top: 48px;
+        width: 2px;
+        height: calc(100% - 16px);
+        background: var(--border);
+        z-index: 0;
+    }
+    .path-node-row.completed:not(:last-child)::before {
+        background: var(--accent);
+    }
+
+    .path-circle {
+        position: relative;
+        z-index: 1;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--surface);
+        border: 2px solid var(--border);
+        color: var(--muted);
+        font-weight: 800;
+        font-size: 1.05rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .path-node-row.completed .path-circle {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #042f2e;
+    }
+    .path-node-row.active .path-circle {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+        box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.18);
+    }
+
+    .path-node-card {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+    }
+    .path-node-card h3 { margin: 0; font-size: 1.05rem; }
+    .path-node-status {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        margin-bottom: 4px;
+    }
+    .path-node-row.completed .path-node-status { color: var(--accent); }
+    .path-node-row.active .path-node-status { color: var(--primary); }
+
+    .path-node-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+    }
+    .path-pill-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--ink);
+        transition: all 0.15s ease;
+    }
+    .path-pill-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .path-pill-btn.pill-accent {
+        background: rgba(0, 194, 168, 0.12);
+        border-color: rgba(0, 194, 168, 0.3);
+        color: #007a68;
+    }
+    .path-pill-btn.pill-accent:hover { border-color: var(--accent); }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1>{{ course.title }}</h1>
+        <p class="subtitle">{{ course.description }}</p>
+    </div>
+    <a class="btn btn-ghost" href="{% url 'courses:course_list' %}">&larr; All courses</a>
+</div>
+
+<h2>Learning Path</h2>
+
+{% if course.chapters.all %}
+    <div class="path-container">
+        {% for chapter in course.chapters.all %}
+            
+            {% comment %}
+            NOTE: 'completed' state is a placeholder — no per-chapter completion
+            tracking exists yet. First chapter shown as 'active', rest as
+            upcoming. Wire this to real progress once chapter-level
+            completion is tracked (follow-up to QuizAttempt).
+            {% endcomment %}
+            
+            <div class="path-node-row {% if forloop.first %}active{% endif %}">
+                <div class="path-circle">{{ forloop.counter }}</div>
+                <div class="path-node-card">
+                    <div class="path-node-status">
+                        {% if forloop.first %}In Progress{% else %}Not Started{% endif %}
                     </div>
-                </li>
-            {% endfor %}
-        </ol>
-    {% else %}
-        <p class="empty-state">No chapters generated yet.</p>
-    {% endif %}
+                    <h3>{{ chapter.title }}</h3>
+                    <p class="subtitle" style="font-size:0.82rem; margin-top:2px; margin-bottom:12px;">
+                        Generated summary · {% if chapter.quiz %}1 quiz{% else %}No quiz yet{% endif %}
+                    </p>
+                    <div class="path-node-actions">
+                        <a class="btn btn-primary" style="padding:8px 16px; border-radius:999px; font-size:0.85rem;" href="{% url 'courses:chapter_review' chapter.pk %}">📖 Review Lesson</a>
+                        {% if chapter.quiz %}
+                            <a class="path-pill-btn" href="{% url 'courses:chapter_quiz' chapter.pk %}">⚡ Take Quiz</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="empty-state">No chapters generated yet.</p>
+{% endif %}
 {% endblock %}
