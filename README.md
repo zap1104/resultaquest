@@ -46,6 +46,13 @@ studyquest/
 
 ## Getting started
 
+**Quickest way:** double-click `setup.bat` (Windows) or run `./setup.sh`
+(macOS/Linux). It creates a virtual environment, installs dependencies, runs
+migrations, and optionally creates an admin account. After that, use
+`run.bat` / `./run.sh` any time to start the server.
+
+**Manual way:**
+
 ```bash
 python -m venv venv
 venv\Scripts\activate        # Windows
