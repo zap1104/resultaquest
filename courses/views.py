@@ -114,41 +114,56 @@ def course_create(request):
     return render(request, 'courses/course_form.html')
 
 
-def _build_journey(course, uploaded_file=None):
-    """Runs the AI step and persists Chapters and Quizzes in an atomic block."""
-    journey = generate_course_journey(
-        course,
-        uploaded_file=uploaded_file
+@transaction.atomic
+def _build_journey(course, uploaded_file=None, journey_override=None):
+    """Runs the AI step and persists Chapters/Quizzes/Questions/Choices
+    atomically — if any step fails partway through, nothing from this
+    call is left in the database.
+
+    Uses required-key access (journey["title"], not journey.get("title", ""))
+    deliberately: once generate_course_journey() guarantees Pydantic-validated
+    output, a missing key means the contract was violated somewhere upstream.
+    Silently defaulting to '' would hide that violation as a blank row in
+    the database instead of surfacing it as a loud, debuggable exception.
+
+    journey_override exists only for testing _build_journey's transactional
+    behavior in isolation, without needing to fabricate a failure inside
+    generate_course_journey/Gemini/the mock generator.
+    """
+    journey = journey_override if journey_override is not None else generate_course_journey(
+        course, uploaded_file=uploaded_file
     )
 
-    if not journey or "chapters" not in journey:
-        return
-    
-    with transaction.atomic():
-        course.structured_content = journey
+    course.title = journey['course']['title']
+    course.description = journey['course']['description']
+    course.structured_content = journey
+    course.save(update_fields=['title', 'description', 'structured_content'])
 
-        if course.pk:
-            course.save()
+    for chapter_data in journey['chapters']:
+        chapter = Chapter.objects.create(
+            course=course,
+            order=chapter_data['order'],
+            title=chapter_data['title'],
+            review_content=chapter_data.get('overview', ''),
+            source_data=chapter_data,
+        )
 
-        for i, chapter_data in enumerate(journey.get('chapters', []), start=1):
-            chapter = Chapter.objects.create(
-                course=course,
-                order=i,
-                title=chapter_data.get('title', f'Chapter {i}'),
-                review_content=chapter_data.get('review_content', ''),
-                source_data=chapter_data,
+        quiz_data = chapter_data['quiz']
+        quiz = Quiz.objects.create(chapter=chapter, title=quiz_data['title'])
+
+        for question_data in quiz_data['questions']:
+            question = Question.objects.create(
+                quiz=quiz,
+                order=question_data['order'],
+                text=question_data['text'],
+                explanation=question_data.get('explanation', ''),
             )
-            quiz_data = chapter_data.get('quiz')
-            if quiz_data:
-                quiz = Quiz.objects.create(chapter=chapter, title=f'{chapter.title} Quiz')
-                for j, q in enumerate(quiz_data.get('questions', []), start=1):
-                    question = Question.objects.create(quiz=quiz, order=j, text=q.get('text', ''))
-                    for choice in q.get('choices', []):
-                        Choice.objects.create(
-                            question=question,
-                            text=choice.get('text', ''),
-                            is_correct=choice.get('is_correct', False),
-                        )
+            for choice_data in question_data['choices']:
+                Choice.objects.create(
+                    question=question,
+                    text=choice_data['text'],
+                    is_correct=choice_data['is_correct'],
+                )
 
 
 @login_required

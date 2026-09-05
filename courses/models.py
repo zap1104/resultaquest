@@ -108,6 +108,7 @@ class Question(models.Model):
     quiz = models.ForeignKey(Quiz, related_name='questions', on_delete=models.CASCADE)
     order = models.PositiveIntegerField(default=1)
     text = models.CharField(max_length=500)
+    explanation = models.TextField(blank=True, default='')
 
     class Meta:
         ordering = ['order']
