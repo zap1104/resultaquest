@@ -105,8 +105,18 @@ class Quiz(models.Model):
 
 
 class Question(models.Model):
+    QUESTION_TYPES = [
+        ('multiple_choice', 'Multiple Choice'),
+        ('true_false', 'True or False'),
+    ]
+
     quiz = models.ForeignKey(Quiz, related_name='questions', on_delete=models.CASCADE)
     order = models.PositiveIntegerField(default=1)
+    question_type = models.CharField(
+        max_length=20,
+        choices=QUESTION_TYPES,
+        default='multiple_choice'
+    )
     text = models.CharField(max_length=500)
     explanation = models.TextField(blank=True, default='')
 
@@ -114,7 +124,7 @@ class Question(models.Model):
         ordering = ['order']
 
     def __str__(self):
-        return self.text
+        return f"[{self.get_question_type_display()}] {self.text}"
 
 
 class Choice(models.Model):

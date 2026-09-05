@@ -1,24 +1,23 @@
 {% extends 'courses/base.html' %}
 {% load static %}
 
-{% block title %}Forge Quest — StudyQuest{% endblock %}
-
+{% block title %}Create Course — StudyQuest{% endblock %}
 {% block page_class %}forge-page-wrap{% endblock %}
 
 {% block content %}
-
 <style>
+    /* Robust Loader Overlay */
     .forge-loader-backdrop {
-        position: fixed; inset: 0; background: rgba(10, 14, 26, 0.82);
-        backdrop-filter: blur(8px); z-index: 2000;
-        display: flex; align-items: center; justify-content: center; padding: 20px;
+        position: fixed; inset: 0; background: rgba(10, 14, 26, 0.88);
+        backdrop-filter: blur(10px); z-index: 9999;
+        display: none; align-items: center; justify-content: center; padding: 20px;
     }
-    .forge-loader-backdrop[hidden] { display: none; }
+    .forge-loader-backdrop.is-active { display: flex !important; }
     
     .forge-loader-card {
         width: 100%; max-width: 440px; background: var(--surface);
         border: 1px solid var(--border); border-radius: 24px; padding: 36px 28px;
-        text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     }
     .forge-spinner {
         width: 52px; height: 52px; margin: 0 auto 18px;
@@ -47,68 +46,73 @@
         100% { left: 100%; }
     }
 
-    .generation-alert {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 16px 20px;
-        margin-bottom: 24px;
-        border-radius: 14px;
-        background: rgba(239, 68, 68, 0.08);
-        border: 1px solid rgba(239, 68, 68, 0.25);
+    /* Configuration Fields */
+    .forge-config-group { margin-top: 24px; text-align: left; }
+    .forge-label { display: block; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
+    .forge-input {
+        width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border);
+        background: var(--surface); color: var(--ink); font-family: inherit; font-size: 0.95rem;
+        box-sizing: border-box; transition: border-color 0.15s ease;
     }
-    .alert-icon { font-size: 1.5rem; flex-shrink: 0; }
-    .alert-copy { flex: 1; min-width: 0; }
-    .alert-copy strong { display: block; font-size: 0.95rem; color: var(--danger); margin-bottom: 2px; }
-    .alert-copy p { margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.4; }
+    .forge-input:focus { outline: none; border-color: var(--primary); }
 
+    /* Pill Selection Grid */
+    .option-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .option-grid.tri { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 600px) { .option-grid, .option-grid.tri { grid-template-columns: 1fr; } }
+
+    .option-card {
+        position: relative; border: 2px solid var(--border); border-radius: 14px;
+        background: var(--surface); padding: 14px; cursor: pointer;
+        transition: all 0.15s ease; display: flex; flex-direction: column; gap: 4px;
+    }
+    .option-card:hover { border-color: var(--primary); }
+    .option-card input { position: absolute; opacity: 0; pointer-events: none; }
+    .option-card.selected {
+        border-color: var(--primary); background: rgba(108, 92, 231, 0.08);
+        box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+    }
+    .option-title { font-size: 0.92rem; font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+    .option-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
+
+    .generation-alert {
+        display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin-bottom: 24px;
+        border-radius: 14px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);
+    }
 </style>
 
 {% if generation_failed %}
     <div class="generation-alert" role="alert">
-        <div class="alert-icon">⚠️</div>
-        <div class="alert-copy">
-            <strong>Generation Interrupted</strong>
-            <p>
-                Could not synthesize a curriculum from <em>{{ previous_filename }}</em>. 
-                The incomplete draft was discarded automatically.
-            </p>
+        <div style="font-size: 1.5rem;">⚠️</div>
+        <div style="flex: 1;">
+            <strong style="color: var(--danger); font-size: 0.95rem;">Generation Interrupted</strong>
+            <p style="margin: 0; font-size: 0.88rem; color: var(--muted);">Could not synthesize curriculum from <em>{{ previous_filename }}</em>. The incomplete draft was discarded automatically.</p>
         </div>
-        <button type="button" class="btn btn-primary" id="retry-picker-btn">
-            Choose Another File
-        </button>
+        <button type="button" class="btn btn-primary" id="retry-picker-btn">Choose Another File</button>
     </div>
 {% endif %}
 
 <div class="forge-container">
-    
     <div class="forge-header text-center">
-        <span class="section-tag">⚡ THE FORGE</span>
-        <h1 class="hero-greeting">Forge a New Quest</h1>
-        <p class="subtitle">Upload your study materials and let AI build your learning journey.</p>
+        <span class="section-tag">⚡ STUDYQUEST</span>
+        <h1 class="hero-greeting">Create a New Course</h1>
+        <p class="subtitle">Upload your syllabus or lecture notes and let AI build a tailored study guide.</p>
     </div>
 
-    <form method="post" enctype="multipart/form-data" class="forge-form">
+    <form method="post" enctype="multipart/form-data" class="forge-form" id="course-form">
         {% csrf_token %}
         
-        <!-- Interactive Drop Zone -->
+        <!-- File Drop Zone -->
         <div class="card drop-zone" id="drop-zone">
-            <!-- STATE 1: Empty -->
             <div id="drop-empty-state">
-                <div class="upload-icon-wrap">
-                    <span class="upload-icon">📄</span>
-                </div>
+                <div class="upload-icon-wrap"><span class="upload-icon">📄</span></div>
                 <h2 class="drop-title">Drag & Drop Study Materials</h2>
                 <p class="drop-subtitle">or <label for="file-upload" class="browse-link">Browse Files</label></p>
             </div>
 
-            <!-- STATE 2: File Selected -->
             <div id="drop-selected-state" class="hidden">
-                <div class="upload-icon-wrap success-pulse">
-                    <span class="upload-icon">✅</span>
-                </div>
+                <div class="upload-icon-wrap success-pulse"><span class="upload-icon">✅</span></div>
                 <h2 class="drop-title text-accent">Material Ready</h2>
-                
                 <div class="file-preview-card">
                     <span class="file-preview-icon">📝</span>
                     <div class="file-details">
@@ -118,76 +122,67 @@
                     <button type="button" class="remove-btn" id="remove-file" title="Remove file">✕</button>
                 </div>
             </div>
-
-            <input type="file" id="file-upload" name="content_file" class="hidden-file-input" accept=".pdf,.docx,.txt">
+            <input type="file" id="file-upload" name="content_file" class="hidden-file-input" accept=".pdf,.docx,.txt" required>
         </div>
 
-        <div class="supported-formats text-center">
-            <strong>Supported Materials:</strong> 
-            <span>✓ Syllabus</span>
-            <span>✓ Modules</span>
-            <span>✓ Lecture Notes</span>
-            <span>✓ Assignments</span>
-            <span>✓ Study Guides</span>
+        <!-- Optional Course Name -->
+        <div class="forge-config-group">
+            <label class="forge-label" for="custom-title">Course Name (Optional)</label>
+            <input type="text" id="custom-title" name="custom_title" class="forge-input" placeholder="e.g. System Integration & Architecture (Leave blank for auto-title)">
         </div>
 
-        <!-- Educational & Limit Cards -->
-        <div class="info-card-grid">
-            <!-- Best Results Card -->
-            <div class="card info-card tip-card">
-                <div class="info-card-header">
-                    <span class="info-icon">💡</span>
-                    <h3>Best Results</h3>
-                </div>
-                <ul class="info-list">
-                    <li>Upload a complete module or syllabus</li>
-                    <li>Include multiple lesson topics</li>
-                    <li><strong>1,000+ words</strong> recommended</li>
-                    <li>Structured content improves AI accuracy</li>
-                </ul>
-            </div>
-
-            <!-- Free Plan Limits -->
-            <div class="card info-card limit-card">
-                <div class="info-card-header">
-                    <span class="info-icon">📦</span>
-                    <h3>Free Plan Limits</h3>
-                </div>
-                <ul class="info-list">
-                    <li><strong>1 upload</strong> per course</li>
-                    <li>Maximum <strong>10 pages</strong></li>
-                    <li>Standard Gemini AI generation</li>
-                </ul>
-            </div>
-
-            <!-- Premium Teaser -->
-            <div class="card info-card premium-card">
-                <div class="info-card-header">
-                    <span class="info-icon">⭐</span>
-                    <h3 class="premium-text">Premium</h3>
-                    <span class="chip chip-gold ml-auto">Soon</span>
-                </div>
-                <ul class="info-list">
-                    <li>Unlimited uploads</li>
-                    <li>Unlimited pages</li>
-                    <li>Advanced learning paths</li>
-                    <li>Detailed analytics</li>
-                </ul>
+        <!-- Study Goal Selection -->
+        <div class="forge-config-group">
+            <label class="forge-label">Study Mode</label>
+            <div class="option-grid">
+                <label class="option-card selected" data-type="radio">
+                    <input type="radio" name="study_goal" value="cram" checked>
+                    <span class="option-title">⚡ High-Yield Cram Sheet</span>
+                    <span class="option-desc">Definitions, key terms, analogies, comparison tables, and quick exam cues.</span>
+                </label>
+                <label class="option-card" data-type="radio">
+                    <input type="radio" name="study_goal" value="deep_learning">
+                    <span class="option-title">📚 Deep Learning</span>
+                    <span class="option-desc">Thorough conceptual breakdowns, workflows, and system architecture details.</span>
+                </label>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-chunky btn-block forge-btn">
-            Generate My Quest &rarr;
+        <!-- Assessment Focus Selection -->
+        <div class="forge-config-group">
+            <label class="forge-label">Target Exam Format</label>
+            <div class="option-grid tri">
+                <label class="option-card selected" data-type="radio">
+                    <input type="radio" name="assessment_focus" value="multiple_choice" checked>
+                    <span class="option-title">Multiple Choice</span>
+                    <span class="option-desc">Contrasting similar terms and application questions.</span>
+                </label>
+                <label class="option-card" data-type="radio">
+                    <input type="radio" name="assessment_focus" value="identification">
+                    <span class="option-title">Identification</span>
+                    <span class="option-desc">Direct definition-to-term recognition cues.</span>
+                </label>
+                <label class="option-card" data-type="radio">
+                    <input type="radio" name="assessment_focus" value="enumeration">
+                    <span class="option-title">Enumeration</span>
+                    <span class="option-desc">Categorized lists, phases, and framework components.</span>
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-chunky btn-block forge-btn" style="margin-top: 32px;">
+            Generate Learning Path &rarr;
         </button>
     </form>
 </div>
 
-<div id="forge-loader" class="forge-loader-backdrop" hidden aria-hidden="true">
+<!-- Animated Processing Modal -->
+<div id="forge-loader" class="forge-loader-backdrop">
     <div class="forge-loader-card">
         <div class="forge-spinner"></div>
-        <span class="forge-loader-badge">Synthesizing Quest</span>
+        <span class="forge-loader-badge">Synthesizing Curriculum</span>
         <h3 id="forge-loader-status" class="forge-loader-title">Analyzing study materials...</h3>
-        <p class="forge-loader-sub">Extracting key concepts, review summaries, and quiz items. Please keep this tab open.</p>
+        <p class="forge-loader-sub">Extracting key concepts, comparison tables, and quiz explanations. Please keep this tab open.</p>
         <div class="forge-loader-bar">
             <div class="forge-loader-bar-fill"></div>
         </div>
@@ -207,10 +202,8 @@
         if (this.files && this.files[0]) {
             const file = this.files[0];
             fileNameDisplay.textContent = file.name;
-            
             let size = (file.size / (1024 * 1024)).toFixed(2);
             fileSizeDisplay.textContent = size > 0.01 ? size + ' MB' : (file.size / 1024).toFixed(1) + ' KB';
-            
             emptyState.classList.add('hidden');
             selectedState.classList.remove('hidden');
             dropZone.classList.add('has-file');
@@ -226,67 +219,68 @@
     });
 
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-    });
-    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-            if (!dropZone.classList.contains('has-file')) dropZone.classList.add('dragover');
-        }, false);
-    });
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
     });
     dropZone.addEventListener('drop', function(e) {
         let dt = e.dataTransfer;
-        let files = dt.files;
-        fileInput.files = files;
-        fileInput.dispatchEvent(new Event('change'));
+        if (dt.files && dt.files.length) {
+            fileInput.files = dt.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
     });
 
+    // Card Selection Interactions
+    document.querySelectorAll('.option-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const groupName = card.querySelector('input').name;
+            document.querySelectorAll(`input[name="${groupName}"]`).forEach(inp => {
+                inp.closest('.option-card').classList.remove('selected');
+            });
+            card.classList.add('selected');
+        });
+    });
+
+    // Reliable Loader Execution
     document.addEventListener('DOMContentLoaded', () => {
-        const form = document.querySelector('form');
+        const form = document.getElementById('course-form');
         const loader = document.getElementById('forge-loader');
         const statusText = document.getElementById('forge-loader-status');
 
         if (!form || !loader || !statusText) return;
 
         const stages = [
-            "Analyzing study materials...",
-            "Extracting core concepts & terms...",
-            "Drafting chapter reviews...",
+            "Analyzing document & structure...",
+            "Extracting definitions, terms & analogies...",
+            "Building comparison matrices...",
             "Constructing quizzes & explanations...",
             "Finalizing your learning path..."
         ];
 
-        form.addEventListener('submit', () => {
-            // Show loader and lock background
-            loader.hidden = false;
-            loader.setAttribute('aria-hidden', 'false');
+        form.addEventListener('submit', (e) => {
+            if (!fileInput.files || !fileInput.files.length) return;
+
+            // Trigger active display via class
+            loader.classList.add('is-active');
             document.body.style.overflow = 'hidden';
 
             let stageIdx = 0;
             setInterval(() => {
                 stageIdx = (stageIdx + 1) % stages.length;
                 statusText.textContent = stages[stageIdx];
-            }, 2800);
+            }, 3000);
         });
 
-        // Reset if user hits Back in browser
         window.addEventListener('pageshow', () => {
-            loader.hidden = true;
-            loader.setAttribute('aria-hidden', 'true');
+            loader.classList.remove('is-active');
             document.body.style.overflow = '';
         });
     });
 
     document.getElementById('retry-picker-btn')?.addEventListener('click', () => {
-    const input = document.querySelector('input[type="file"]');
-    if (input) {
-        input.value = '';
-        input.click();
-    }
-});
-
+        if (fileInput) {
+            fileInput.value = '';
+            fileInput.click();
+        }
+    });
 </script>
 {% endblock %}

@@ -6,10 +6,11 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.db import transaction
 
 from .models import Chapter, Choice, Course, Question, Quiz, QuizAttempt, UserProfile, XPTransaction, ChapterCompletion
-from django.db import transaction
 from .services import generate_course_journey, extract_text_from_file
+
 
 def auth_portal(request):
     """Game launcher landing page with tabbed Login and Sign Up."""
@@ -49,18 +50,15 @@ def dashboard(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     courses = list(Course.objects.filter(user=request.user).prefetch_related('chapters'))
 
-    # XP math: 100 XP per level
     xp_needed_next = profile.current_level * 100
     xp_percentage = min(int((profile.total_xp / max(xp_needed_next, 1)) * 100), 100)
 
-    # Calculate progress for each course
     for course in courses:
         total_chapters = course.chapters.count()
         course.progress_pct = 40 if total_chapters > 1 else (15 if total_chapters == 1 else 0)
 
     recent_course = courses[0] if courses else None
 
-    # Calculate real achievement unlocks
     unlocked_count = 0
     if len(courses) > 0:
         unlocked_count += 1
@@ -91,6 +89,9 @@ def course_list(request):
 def course_create(request):
     if request.method == 'POST':
         uploaded_file = request.FILES.get('content_file')
+        assessment_formats = request.POST.getlist('assessment_focus') or ['multiple_choice']
+        study_goal = request.POST.get('study_goal', 'balanced_review')
+        custom_title = request.POST.get('custom_title', '').strip()
         
         if not uploaded_file:
             return render(request, 'courses/course_form.html', {
@@ -98,18 +99,39 @@ def course_create(request):
             })
 
         raw_name = uploaded_file.name.rsplit('.', 1)[0]
-        title = raw_name.replace('_', ' ').replace('-', ' ').strip().title()
+        fallback_title = raw_name.replace('_', ' ').replace('-', ' ').strip().title()
+        title = custom_title or fallback_title or "Untitled Course"
 
         try:
+            extracted_text = extract_text_from_file(uploaded_file)
+
+            # 1. RUN AI GENERATION OUTSIDE DB TRANSACTION (No SQLite lock held during network I/O)
+            dummy_course = Course(
+                user=request.user,
+                title=title,
+                syllabus_text=extracted_text,
+            )
+            journey = generate_course_journey(
+                dummy_course,
+                uploaded_file=uploaded_file,
+                study_goal=study_goal,
+                assessment_formats=assessment_formats,
+            )
+
+            # 2. ATOMIC DATABASE PERSISTENCE (Runs in ~10ms)
             with transaction.atomic():
-                extracted_text = extract_text_from_file(uploaded_file)
                 course = Course.objects.create(
                     user=request.user,
-                    title=title or "Untitled Course",
+                    title=title,
                     syllabus_text=extracted_text,
-                    description="AI-generated learning path based on your uploaded materials."
+                    description=f"Generated for {study_goal.replace('_', ' ')}."
                 )
-                _build_journey(course, uploaded_file=uploaded_file)
+                _build_journey(
+                    course,
+                    journey_override=journey,
+                    study_goal=study_goal,
+                    assessment_formats=assessment_formats,
+                )
                 
             return redirect('courses:course_detail', pk=course.pk)
 
@@ -124,52 +146,44 @@ def course_create(request):
 
 
 @transaction.atomic
-def _build_journey(course, uploaded_file=None, journey_override=None):
+def _build_journey(course, uploaded_file=None, journey_override=None, study_goal="balanced_review", assessment_formats=None):
     journey = journey_override if journey_override is not None else generate_course_journey(
-        course, uploaded_file=uploaded_file
+        course,
+        uploaded_file=uploaded_file,
+        study_goal=study_goal,
+        assessment_formats=assessment_formats,
     )
 
-    # Safe extraction with fallback to uploaded filename/defaults
-    course_meta = journey.get('course', {})
-    course.title = course_meta.get('title') or journey.get('title') or course.title
-    course.description = course_meta.get('description') or journey.get('description') or course.description
+    course.title = journey['course']['title']
+    course.description = journey['course']['description']
     course.structured_content = journey
     course.save(update_fields=['title', 'description', 'structured_content'])
 
-    chapters_data = journey.get('chapters', [])
-    if not chapters_data:
-        raise ValueError("AI response did not contain any valid chapters.")
-
-    for idx, chapter_data in enumerate(chapters_data, start=1):
+    for chapter_data in journey['chapters']:
         chapter = Chapter.objects.create(
             course=course,
-            order=chapter_data.get('order', idx),
-            title=chapter_data.get('title', f"Chapter {idx}"),
-            review_content=chapter_data.get('review_content') or chapter_data.get('overview', ''),
+            order=chapter_data['order'],
+            title=chapter_data['title'],
+            review_content=chapter_data.get('overview') or chapter_data.get('focus') or chapter_data.get('review_content', ''),
             source_data=chapter_data,
         )
 
-        quiz_data = chapter_data.get('quiz')
-        if not quiz_data:
-            continue
+        quiz_data = chapter_data['quiz']
+        quiz = Quiz.objects.create(chapter=chapter, title=quiz_data['title'])
 
-        quiz = Quiz.objects.create(
-            chapter=chapter, 
-            title=quiz_data.get('title', f"{chapter.title} Quiz")
-        )
-
-        for q_idx, question_data in enumerate(quiz_data.get('questions', []), start=1):
+        for question_data in quiz_data['questions']:
             question = Question.objects.create(
                 quiz=quiz,
-                order=question_data.get('order', q_idx),
-                text=question_data.get('text', ''),
+                order=question_data['order'],
+                question_type=question_data.get('type', 'multiple_choice'),
+                text=question_data['text'],
                 explanation=question_data.get('explanation', ''),
             )
-            for choice_data in question_data.get('choices', []):
+            for choice_data in question_data['choices']:
                 Choice.objects.create(
                     question=question,
-                    text=choice_data.get('text', ''),
-                    is_correct=choice_data.get('is_correct', False),
+                    text=choice_data['text'],
+                    is_correct=choice_data['is_correct'],
                 )
 
 
@@ -214,13 +228,7 @@ def chapter_review(request, pk):
 @login_required
 @require_POST
 def complete_chapter(request, pk):
-    """Marks a chapter's review as read and awards a small, one-time XP
-    bonus. Safe to trigger client-side — there's no correctness to fake
-    here, only "did the button get pressed," and the unique_together
-    constraint on ChapterCompletion prevents farming XP by re-submitting.
-    """
     chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
-
     completion, created = ChapterCompletion.objects.get_or_create(user=request.user, chapter=chapter)
 
     if created:
@@ -231,9 +239,9 @@ def complete_chapter(request, pk):
 
     return JsonResponse({'awarded': False, 'xp_earned': 0})
 
+
 @login_required
 def course_edit(request, pk):
-    """Updates course title and description."""
     course = get_object_or_404(Course, pk=pk, user=request.user)
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
@@ -247,7 +255,6 @@ def course_edit(request, pk):
 
 @login_required
 def course_delete(request, pk):
-    """Deletes a course and all associated chapters/quizzes via CASCADE."""
     course = get_object_or_404(Course, pk=pk, user=request.user)
     if request.method == 'POST':
         course.delete()
@@ -257,7 +264,6 @@ def course_delete(request, pk):
 
 @login_required
 def chapter_rename(request, pk):
-    """Renames an individual chapter."""
     chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
@@ -265,6 +271,7 @@ def chapter_rename(request, pk):
             chapter.title = title
             chapter.save(update_fields=['title'])
     return redirect('courses:course_detail', pk=chapter.course.pk)
+
 
 @login_required
 def chapter_quiz(request, pk):
@@ -279,11 +286,6 @@ def chapter_quiz(request, pk):
 @login_required
 @require_POST
 def submit_quiz(request, pk):
-    """Grades a quiz attempt server-side. Expects a JSON body:
-        {"answers": {"<question_id>": <choice_id>, ...}}
-    Never trusts anything the client claims about correctness — every
-    choice's is_correct flag is re-checked against the database here.
-    """
     chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
     quiz = getattr(chapter, 'quiz', None)
     if quiz is None:
@@ -317,7 +319,6 @@ def submit_quiz(request, pk):
             'correct_choice_id': correct_choice.id if correct_choice else None,
         })
 
-    # XP formula: 10 per correct answer, +20 bonus for a perfect score
     xp_earned = score * 10
     if total_questions > 0 and score == total_questions:
         xp_earned += 20
@@ -332,8 +333,6 @@ def submit_quiz(request, pk):
 
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     profile.award_xp(xp_earned, reason=f'Quiz: {chapter.title}')
-
-    # SPRINT C: a completed quiz counts as a study activity for streak purposes
     profile.record_study_activity()
 
     return JsonResponse({
