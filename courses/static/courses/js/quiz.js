@@ -1,9 +1,6 @@
-// Focus Mode quiz runner. Selecting a choice only highlights it — the user
-// must press "Next" to lock it in. This prevents an accidental misclick
-// from permanently submitting a wrong answer, which the instant-advance
-// version allowed. Grading still happens entirely server-side in one
-// batch request at the end; no answer-correctness data ever reaches
-// the browser before submission.
+// Focus Mode quiz runner — 2x2 answer grid, select-then-confirm flow.
+// Grading remains entirely server-side in one batch request; no
+// per-question correctness is ever exposed before submission.
 document.addEventListener('DOMContentLoaded', () => {
     const dataElement = document.getElementById('quiz-data');
     if (!dataElement) return;
@@ -11,13 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const quizData = JSON.parse(dataElement.textContent);
     const chapterId = quizData.chapterId;
     const questions = quizData.questions;
-    
-    // Grab the chapter title for the success anchor state
-    const chapterTitleForDisplay = document.querySelector('.quiz-focus-header')?.dataset.chapterTitle || '';
+    const chapterTitle = document.querySelector('.quiz-focus-header')?.dataset.chapterTitle || '';
 
     let currentIndex = 0;
     let selectedChoiceId = null;
-    const userAnswers = {}; // { "question_id": "choice_id" }
+    const userAnswers = {};
 
     const questionWrap = document.getElementById('quiz-question-wrap');
     const progressFill = document.getElementById('quiz-progress-fill');
@@ -54,10 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
         q.choices.forEach((choice, i) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'quiz-choice-chunky';
+            btn.className = 'quiz-option';
             btn.dataset.choiceId = choice.id;
             btn.innerHTML = `
-                <span class="quiz-choice-letter">${LETTERS[i] || '?'}</span>
+                <span class="quiz-letter">${LETTERS[i] || '?'}</span>
                 <span>${choice.text}</span>
             `;
             btn.addEventListener('click', () => selectChoice(btn, choice.id));
@@ -80,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function selectChoice(clickedBtn, choiceId) {
         selectedChoiceId = choiceId;
-        questionWrap.querySelectorAll('.quiz-choice-chunky').forEach((b) => {
+        questionWrap.querySelectorAll('.quiz-option').forEach((b) => {
             b.classList.toggle('selected', b === clickedBtn);
         });
         document.getElementById('quiz-confirm-btn').disabled = false;
@@ -102,13 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function submitQuizToServer() {
         progressFill.style.width = '100%';
         progressLabel.textContent = 'Grading...';
-        
-        // Replaced floating cap with intentional, contextual state
         questionWrap.innerHTML = `
-            <div class="quiz-submitted-anchor" style="text-align: center; margin-top: 80px; padding: 0 20px;">
+            <div class="quiz-submitted-anchor">
                 <div class="quiz-submitted-check">✅</div>
-                <div class="quiz-submitted-title" style="font-size: 1.5rem; font-weight: 800; color: var(--ink); margin-bottom: 4px;">Quiz Submitted</div>
-                <p class="quiz-submitted-sub" style="font-size: 1rem; color: var(--muted); margin: 0;">${chapterTitleForDisplay}</p>
+                <div class="quiz-submitted-title">Quiz Submitted</div>
+                <p class="quiz-submitted-sub">${chapterTitle}</p>
                 <p class="quiz-submitted-status">Calculating results...</p>
             </div>
         `;
@@ -134,17 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showResults(data) {
-        // Update the anchor status to show completion instead of wiping it
-        const statusEl = document.querySelector('.quiz-submitted-status');
-        if (statusEl) statusEl.textContent = 'Results ready!';
-        
         progressLabel.textContent = '';
-
         document.getElementById('sheet-score').textContent = `${data.score}/${data.total_questions}`;
         document.getElementById('sheet-xp').textContent = `+${data.xp_earned}`;
         document.getElementById('sheet-level').textContent = data.new_level;
         document.getElementById('sheet-streak').textContent = data.new_streak;
-
         resultSheet.classList.add('open');
     }
 

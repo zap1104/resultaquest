@@ -1,61 +1,296 @@
 {% extends 'courses/base.html' %}
+{% load static quest_extras %}
 
-{% block title %}{{ chapter.title }} — Review{% endblock %}
+{% block title %}{{ chapter.title }} | Review{% endblock %}
 
 {% block content %}
 <style>
-    .review-page-wrap {
-        max-width: 680px;
-        margin: 0 auto;
-        padding-bottom: 64px;
+    /* 1. VIEWPORT & WORKSPACE LOCK */
+    html, body { width: 100%; height: 100%; overflow: hidden !important; margin: 0; }
+    .footer, footer, .site-footer { display: none !important; }
+    .page { width: 100% !important; max-width: none !important; height: calc(100vh - 61px); margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
+
+    /* 2. MASTER WORKSPACE */
+    .review-workspace {
+        width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+        gap: 0; padding: 24px 32px; box-sizing: border-box; overflow: hidden; background: var(--bg);
+        transition: gap 0.42s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .review-context-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: rgba(108, 92, 231, 0.1);
-        color: var(--primary);
-        font-size: 0.78rem;
-        font-weight: 800;
-        letter-spacing: 0.03em;
-        padding: 6px 14px;
-        border-radius: 999px;
-        margin-bottom: 20px;
+    .review-workspace.reader-open { gap: 28px; }
+
+    /* 3. EXPANDED HUB WORKSPACE */
+    .lesson-hub-pane {
+        width: min(840px, 100%); height: 100%; min-width: 0; display: flex; align-items: center;
+        justify-content: center; flex: 0 0 auto; overflow: hidden;
+        transition: width 0.42s cubic-bezier(0.16, 1, 0.3, 1), padding 0.42s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .review-content {
-        font-size: 1.1rem;
-        line-height: 1.8;
-        color: var(--ink);
+    .reader-open .lesson-hub-pane {
+        width: calc((100% - 28px) / 2);
+        padding-inline: clamp(12px, 1.8vw, 24px);
+        box-sizing: border-box;
     }
-    .review-content p { margin: 0 0 1.2em; }
+
+    .lesson-hub { 
+        width: 100%; 
+        max-width: 720px; 
+        min-width: 0; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 20px; 
+        margin: 0 auto; 
+    }
+
+    /* Navigation & Progress */
+    .lesson-back-link { display: inline-flex; align-items: center; gap: 7px; width: fit-content; color: var(--muted); font-size: 0.9rem; font-weight: 700; text-decoration: none; transition: color 0.18s ease; }
+    .lesson-back-link:hover { color: var(--primary); }
+
+    .lesson-progress { display: flex; flex-direction: column; gap: 8px; }
+    .lesson-progress-labels { display: flex; justify-content: space-between; align-items: center; gap: 16px; color: var(--muted); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.045em; text-transform: uppercase; }
+    .lesson-progress-track { width: 100%; height: 8px; overflow: hidden; border-radius: 999px; background: var(--border); }
+    .lesson-progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.45s ease; }
+
+    /* Heading */
+    .lesson-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 18px; min-width: 0; }
+    .lesson-icon { width: 52px; height: 52px; display: grid; place-items: center; flex-shrink: 0; border-radius: 14px; background: rgba(108, 92, 231, 0.14); color: var(--primary); font-size: 1.5rem; }
+    .lesson-heading-copy { min-width: 0; }
+    .lesson-heading-copy small { display: block; margin-bottom: 4px; color: var(--muted); font-size: 0.74rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+    .lesson-title { margin: 0; overflow-wrap: anywhere; color: var(--ink); font-size: clamp(1.5rem, 2.2vw, 1.85rem); line-height: 1.25; }
     
-    .review-cta-wrap {
-        margin-top: 48px;
-        text-align: center;
-        padding-top: 32px;
-        border-top: 1px solid var(--border);
+    .lesson-completed-chip { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; padding: 6px 14px; border-radius: 999px; background: rgba(0, 194, 168, 0.12); color: var(--accent); font-size: 0.8rem; font-weight: 800; transition: opacity 0.2s ease, visibility 0s linear 0s; }
+    .reader-open .lesson-completed-chip { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.16s ease, visibility 0s linear 0.16s; }
+
+    /* Expanded Preview Card */
+    .lesson-preview-card { min-width: 0; padding: 28px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+    .lesson-preview-label { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; padding: 5px 11px; border-radius: 999px; background: rgba(0, 194, 168, 0.11); color: var(--accent); font-size: 0.74rem; font-weight: 800; }
+    .lesson-preview { position: relative; max-height: 165px; margin-bottom: 20px; overflow: hidden; color: var(--ink); }
+    .lesson-preview p, .lesson-preview ul, .lesson-preview ol { margin: 0 0 10px; font-size: 1.04rem; line-height: 1.7; }
+    .lesson-preview ul, .lesson-preview ol { padding-left: 20px; }
+    .lesson-preview-fade { position: absolute; inset: auto 0 0; height: 60px; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--surface)); }
+
+    .lesson-actions { display: grid; gap: 11px; }
+    .lesson-actions .btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; text-align: center; padding-block: 12px; font-size: 0.98rem; }
+    .lesson-complete-btn.is-complete, .lesson-complete-btn:disabled { cursor: default; }
+
+    /* Expanded Activities */
+    .lesson-activities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .lesson-activity { min-width: 0; min-height: 86px; display: flex; align-items: center; gap: 16px; padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--ink); text-decoration: none; transition: transform 0.16s ease, border-color 0.16s ease; }
+    .lesson-activity:not(.disabled):hover { transform: translateY(-2px); border-color: var(--primary); }
+    .lesson-activity.disabled { cursor: not-allowed; opacity: 0.48; pointer-events: none; }
+    .activity-icon { width: 48px; height: 48px; display: grid; place-items: center; flex-shrink: 0; border-radius: 13px; background: rgba(0, 194, 168, 0.12); font-size: 1.35rem; }
+    .quiz-activity .activity-icon { background: rgba(108, 92, 231, 0.14); }
+    .activity-copy { min-width: 0; flex: 1; }
+    .activity-copy strong { display: block; margin-bottom: 3px; font-size: 1rem; line-height: 1.2; }
+    .activity-copy span { display: block; overflow: hidden; color: var(--muted); font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
+    .activity-arrow { flex-shrink: 0; color: var(--muted); font-size: 1.15rem; }
+
+    /* 4. RIGHT WORKSPACE: FULL LESSON READER */
+    .lesson-reader-pane {
+        width: 0; height: 100%; min-width: 0; flex: 0 0 auto; display: flex; flex-direction: column;
+        overflow: hidden; border: 0 solid var(--border); border-radius: 18px; background: var(--surface);
+        opacity: 0; visibility: hidden; pointer-events: none; transform: translateX(16px);
+        transition: width 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease, transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), border-width 0s linear 0.12s, visibility 0s linear 0.42s;
+    }
+    .reader-open .lesson-reader-pane {
+        width: calc((100% - 28px) / 2); border-width: 1px; opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(0);
+        transition: width 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease 0.08s, transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), border-width 0s, visibility 0s;
+    }
+
+    .reader-header { flex-shrink: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 24px 28px; border-bottom: 1px solid var(--border); }
+    .reader-heading { min-width: 0; }
+    .reader-heading small { display: block; margin-bottom: 4px; color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+    .reader-heading h2 { margin: 0; overflow-wrap: anywhere; color: var(--ink); font-size: 1.35rem; line-height: 1.3; }
+    .reader-close { width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--muted); font-size: 1.2rem; cursor: pointer; transition: color 0.16s ease, border-color 0.16s ease, background-color 0.16s ease; }
+    .reader-close:hover { border-color: var(--danger); background: rgba(239, 68, 68, 0.08); color: var(--danger); }
+
+    .reader-content { min-height: 0; flex: 1; overflow-y: auto; padding: 34px clamp(24px, 3.5vw, 56px) 44px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    .reader-content-inner { width: 100%; max-width: 760px; margin: 0 auto; color: var(--ink); font-size: 1.06rem; line-height: 1.8; }
+    .reader-content-inner p, .reader-content-inner ul, .reader-content-inner ol { margin: 0 0 1.25em; }
+    .reader-content-inner ul, .reader-content-inner ol { padding-left: 24px; }
+    .reader-content::-webkit-scrollbar { width: 7px; }
+    .reader-content::-webkit-scrollbar-track { background: transparent; }
+    .reader-content::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border); }
+    .reader-content::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+    /* Responsive */
+    @media (max-width: 1050px) {
+        .review-workspace.reader-open .lesson-hub-pane { display: none; }
+        .review-workspace.reader-open .lesson-reader-pane { width: min(100%, 760px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .review-workspace, .lesson-hub-pane, .lesson-reader-pane, .lesson-completed-chip { transition: none !important; }
     }
 </style>
 
-<div class="review-page-wrap">
-    <div class="page-header">
-        <h1>{{ chapter.title }}</h1>
-        <a class="btn btn-ghost" href="{% url 'courses:course_detail' chapter.course.pk %}">&larr; Back to Learning Path</a>
-    </div>
-
-    <div class="review-panel" style="background: transparent; border: none; padding: 0;">
-        <span class="review-context-badge">🤖 AI-Generated Summary</span>
-        <div class="review-content">{{ chapter.review_content|linebreaks }}</div>
-    </div>
-
-    <div class="review-cta-wrap">
-        {% if has_quiz %}
-            <a class="btn btn-primary btn-chunky" href="{% url 'courses:chapter_quiz' chapter.pk %}" style="width: 100%; max-width: 320px;">
-                Ready — Start Quiz &rarr;
+<div class="review-workspace" id="review-workspace">
+    <!-- PANE 1: CENTERED HUB -->
+    <section class="lesson-hub-pane">
+        <div class="lesson-hub">
+            <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="lesson-back-link">
+                <span aria-hidden="true">&larr;</span>
+                <span>Back to {{ chapter.course.title }}</span>
             </a>
-        {% else %}
-            <p class="hint">No quiz generated for this chapter yet.</p>
-        {% endif %}
-    </div>
+
+            <div class="lesson-progress">
+                <div class="lesson-progress-labels">
+                    <span>Lesson {{ chapter.order }} of {{ chapter.course.chapters.count }}</span>
+                    <span>{% widthratio chapter.order chapter.course.chapters.count 100 %}% complete</span>
+                </div>
+                <div class="lesson-progress-track" role="progressbar" aria-label="Lesson progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{% widthratio chapter.order chapter.course.chapters.count 100 %}">
+                    <div class="lesson-progress-fill" style="width: {% widthratio chapter.order chapter.course.chapters.count 100 %}%;"></div>
+                </div>
+            </div>
+
+            <header class="lesson-heading">
+                <div class="lesson-icon" aria-hidden="true">📖</div>
+                <div class="lesson-heading-copy">
+                    <small>Lesson</small>
+                    <h1 class="lesson-title">{{ chapter.title }}</h1>
+                </div>
+                {% if is_completed %}
+                    <span class="lesson-completed-chip" id="lesson-completed-chip">✓ Completed</span>
+                {% endif %}
+            </header>
+
+            <article class="lesson-preview-card">
+                <span class="lesson-preview-label">Lesson Preview</span>
+                <div class="lesson-preview">
+                    {{ chapter.review_content|structured }}
+                    <div class="lesson-preview-fade" aria-hidden="true"></div>
+                </div>
+                <div class="lesson-actions">
+                    <button type="button" id="read-full-lesson-btn" class="btn btn-secondary" aria-controls="lesson-reader-pane" aria-expanded="false">
+                        <span>Read Full Lesson</span>
+                        <span aria-hidden="true">&nearr;</span>
+                    </button>
+                    <button type="button" id="mark-complete-btn" class="btn btn-primary btn-chunky lesson-complete-btn {% if is_completed %}is-complete{% endif %}" data-chapter-id="{{ chapter.pk }}" {% if is_completed %}disabled{% endif %}>
+                        {% if is_completed %}Completed ✓{% else %}Mark Lesson Complete (+15 XP){% endif %}
+                    </button>
+                </div>
+            </article>
+
+            <section class="lesson-activities" aria-label="Lesson activities">
+                <div class="lesson-activity disabled" title="Coming soon" aria-disabled="true">
+                    <div class="activity-icon" aria-hidden="true">🃏</div>
+                    <div class="activity-copy">
+                        <strong>Flashcards</strong>
+                        <span>Coming soon</span>
+                    </div>
+                </div>
+
+                {% if has_quiz %}
+                    <a href="{% url 'courses:chapter_quiz' chapter.pk %}" class="lesson-activity quiz-activity">
+                        <div class="activity-icon" aria-hidden="true">⚡</div>
+                        <div class="activity-copy">
+                            <strong>Quiz</strong>
+                            <span>{{ question_count }} question{{ question_count|pluralize }}</span>
+                        </div>
+                        <span class="activity-arrow" aria-hidden="true">&rarr;</span>
+                    </a>
+                {% else %}
+                    <div class="lesson-activity quiz-activity disabled" title="No quiz generated yet" aria-disabled="true">
+                        <div class="activity-icon" aria-hidden="true">⚡</div>
+                        <div class="activity-copy">
+                            <strong>Quiz</strong>
+                            <span>Not available yet</span>
+                        </div>
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+    </section>
+
+    <!-- PANE 2: FULL LESSON READER -->
+    <aside class="lesson-reader-pane" id="lesson-reader-pane" aria-hidden="true" aria-label="Full lesson reader">
+        <header class="reader-header">
+            <div class="reader-heading">
+                <small>Full Lesson</small>
+                <h2>{{ chapter.title }}</h2>
+            </div>
+            <button type="button" class="reader-close" id="close-reader-btn" aria-label="Close full lesson" title="Close full lesson">✕</button>
+        </header>
+
+        <div class="reader-content" id="reader-content" tabindex="0">
+            <article class="reader-content-inner">
+                {{ chapter.review_content|structured }}
+            </article>
+        </div>
+    </aside>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('review-workspace');
+    const reader = document.getElementById('lesson-reader-pane');
+    const readerContent = document.getElementById('reader-content');
+    const openReaderBtn = document.getElementById('read-full-lesson-btn');
+    const closeReaderBtn = document.getElementById('close-reader-btn');
+    const completeBtn = document.getElementById('mark-complete-btn');
+
+    function openReader() {
+        workspace.classList.add('reader-open');
+        reader.setAttribute('aria-hidden', 'false');
+        openReaderBtn.setAttribute('aria-expanded', 'true');
+        window.requestAnimationFrame(() => closeReaderBtn.focus());
+    }
+
+    function closeReader() {
+        workspace.classList.remove('reader-open');
+        reader.setAttribute('aria-hidden', 'true');
+        openReaderBtn.setAttribute('aria-expanded', 'false');
+        readerContent.scrollTop = 0;
+        openReaderBtn.focus();
+    }
+
+    if (openReaderBtn && closeReaderBtn) {
+        openReaderBtn.addEventListener('click', openReader);
+        closeReaderBtn.addEventListener('click', closeReader);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && workspace.classList.contains('reader-open')) closeReader();
+    });
+
+    function getCookie(name) {
+        const parts = (`; ${document.cookie}`).split(`; ${name}=`);
+        return parts.length === 2 ? parts.pop().split(';').shift() : '';
+    }
+
+    if (!completeBtn || completeBtn.disabled) return;
+
+    completeBtn.addEventListener('click', async () => {
+        const originalText = completeBtn.textContent.trim();
+        completeBtn.disabled = true;
+        completeBtn.textContent = 'Saving...';
+
+        try {
+            const response = await fetch(`/chapters/${completeBtn.dataset.chapterId}/complete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+            await response.json();
+
+            completeBtn.textContent = 'Completed ✓';
+            completeBtn.classList.add('is-complete');
+
+            if (!document.getElementById('lesson-completed-chip')) {
+                const completedChip = document.createElement('span');
+                completedChip.id = 'lesson-completed-chip';
+                completedChip.className = 'lesson-completed-chip';
+                completedChip.textContent = '✓ Completed';
+                const heading = document.querySelector('.lesson-heading');
+                if (heading) heading.appendChild(completedChip);
+            }
+        } catch (error) {
+            completeBtn.disabled = false;
+            completeBtn.textContent = originalText;
+            console.error('Unable to mark lesson complete:', error);
+        }
+    });
+});
+</script>
 {% endblock %}

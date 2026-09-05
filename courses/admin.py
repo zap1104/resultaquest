@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Chapter, Choice, Course, Question, Quiz, UserProfile, XPTransaction, QuizAttempt
+from .models import Chapter, Choice, Course, Question, Quiz, UserProfile, XPTransaction, QuizAttempt, ChapterCompletion
 
 class ChapterInline(admin.TabularInline):
     model = Chapter
@@ -32,6 +32,10 @@ class QuizAttemptAdmin(admin.ModelAdmin):
 class XPTransactionAdmin(admin.ModelAdmin):
     list_display = ('user', 'amount', 'reason', 'created_at')
     list_filter = ('created_at',)
+
+@admin.register(ChapterCompletion)
+class ChapterCompletionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'chapter', 'completed_at')
 
 admin.site.register(Chapter)
 admin.site.register(Quiz)

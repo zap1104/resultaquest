@@ -5,21 +5,11 @@
 
 {% block content %}
 <style>
-    .path-container {
-        position: relative;
-        margin-top: 32px;
-        padding-left: 8px;
-    }
+    .path-container { position: relative; margin-top: 32px; padding-left: 8px; }
 
-    .path-node-row {
-        position: relative;
-        display: flex;
-        gap: 20px;
-        padding-bottom: 32px;
-    }
+    .path-node-row { position: relative; display: flex; gap: 20px; padding-bottom: 32px; }
     .path-node-row:last-child { padding-bottom: 0; }
 
-    /* Vertical connector line — drawn behind the circle, spans to the next node */
     .path-node-row:not(:last-child)::before {
         content: '';
         position: absolute;
@@ -30,9 +20,7 @@
         background: var(--border);
         z-index: 0;
     }
-    .path-node-row.completed:not(:last-child)::before {
-        background: var(--accent);
-    }
+    .path-node-row.completed:not(:last-child)::before { background: var(--accent); }
 
     .path-circle {
         position: relative;
@@ -61,6 +49,7 @@
         color: #fff;
         box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.18);
     }
+    .path-node-row.upcoming .path-circle { opacity: 0.55; }
 
     .path-node-card {
         flex: 1;
@@ -69,24 +58,19 @@
         border-radius: var(--radius);
         padding: 18px 20px;
     }
-    .path-node-card h3 { margin: 0; font-size: 1.05rem; }
+    .path-node-row.upcoming .path-node-card { opacity: 0.6; }
+    .path-node-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
     .path-node-status {
         font-size: 0.78rem;
         font-weight: 700;
         color: var(--muted);
         text-transform: uppercase;
         letter-spacing: 0.03em;
-        margin-bottom: 4px;
     }
     .path-node-row.completed .path-node-status { color: var(--accent); }
     .path-node-row.active .path-node-status { color: var(--primary); }
 
-    .path-node-actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-top: 14px;
-    }
+    .path-node-actions { display: flex; gap: 10px; margin-top: 14px; }
     .path-pill-btn {
         display: inline-flex;
         align-items: center;
@@ -107,7 +91,6 @@
         border-color: rgba(0, 194, 168, 0.3);
         color: #007a68;
     }
-    .path-pill-btn.pill-accent:hover { border-color: var(--accent); }
 </style>
 
 <div class="page-header">
@@ -120,31 +103,24 @@
 
 <h2>Learning Path</h2>
 
-{% if course.chapters.all %}
+{% if chapters %}
     <div class="path-container">
-        {% for chapter in course.chapters.all %}
-            
-            {% comment %}
-            NOTE: 'completed' state is a placeholder — no per-chapter completion
-            tracking exists yet. First chapter shown as 'active', rest as
-            upcoming. Wire this to real progress once chapter-level
-            completion is tracked (follow-up to QuizAttempt).
-            {% endcomment %}
-            
-            <div class="path-node-row {% if forloop.first %}active{% endif %}">
-                <div class="path-circle">{{ forloop.counter }}</div>
+        {% for chapter in chapters %}
+            <div class="path-node-row {{ chapter.progress_status }}">
+                <div class="path-circle">
+                    {% if chapter.progress_status == 'completed' %}✓{% else %}{{ forloop.counter }}{% endif %}
+                </div>
                 <div class="path-node-card">
                     <div class="path-node-status">
-                        {% if forloop.first %}In Progress{% else %}Not Started{% endif %}
+                        {% if chapter.progress_status == 'completed' %}Completed
+                        {% elif chapter.progress_status == 'active' %}In Progress
+                        {% else %}Not Started{% endif %}
                     </div>
                     <h3>{{ chapter.title }}</h3>
-                    <p class="subtitle" style="font-size:0.82rem; margin-top:2px; margin-bottom:12px;">
-                        Generated summary · {% if chapter.quiz %}1 quiz{% else %}No quiz yet{% endif %}
-                    </p>
                     <div class="path-node-actions">
                         <a class="btn btn-primary" style="padding:8px 16px; border-radius:999px; font-size:0.85rem;" href="{% url 'courses:chapter_review' chapter.pk %}">📖 Review Lesson</a>
                         {% if chapter.quiz %}
-                            <a class="path-pill-btn" href="{% url 'courses:chapter_quiz' chapter.pk %}">⚡ Take Quiz</a>
+                            <a class="path-pill-btn pill-accent" href="{% url 'courses:chapter_quiz' chapter.pk %}">⚡ Take Quiz</a>
                         {% endif %}
                     </div>
                 </div>
