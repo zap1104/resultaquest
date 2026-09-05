@@ -1,0 +1,133 @@
+{
+  "order": 2,
+  "title": "Cloud Service Models",
+  "overview": "Cloud services are delivered through three models — IaaS, PaaS, and SaaS — that differ in how much infrastructure the provider manages versus the customer.",
+  "key_terms": [
+    {
+      "term": "Infrastructure as a Service (IaaS)",
+      "definition": "Rent basic IT infrastructure — virtual machines, storage, and networks — and manage the operating system and applications yourself.",
+      "source_reference": "Page 6"
+    },
+    {
+      "term": "Platform as a Service (PaaS)",
+      "definition": "Provides a ready-made platform — operating system, runtime, and tools — so developers can focus purely on writing code.",
+      "source_reference": "Page 7"
+    },
+    {
+      "term": "Software as a Service (SaaS)",
+      "definition": "Fully-built software applications delivered over the internet, ready to use through a web browser with no installation required.",
+      "source_reference": "Page 8"
+    }
+  ],
+  "analogy": {
+    "label": "Renting a home, three ways",
+    "explanation": "IaaS is like leasing an empty plot of land — you build and manage everything on it. PaaS is like renting a furnished apartment — the essentials are ready, you just move in your belongings. SaaS is like staying at a hotel — everything is ready for use, no setup needed.",
+    "source_reference": "Pages 6-8"
+  },
+  "quick_facts": [
+    {
+      "text": "IaaS is used by IT teams needing full control over servers, storage, and networking (e.g., Amazon EC2, Azure Virtual Machines, Google Compute Engine).",
+      "source_reference": "Page 6"
+    },
+    {
+      "text": "PaaS is used by developers who want to build and deploy applications without managing servers (e.g., Google App Engine, Azure App Service, Heroku).",
+      "source_reference": "Page 7"
+    },
+    {
+      "text": "SaaS is used by end users and businesses who just want to use an application right away (e.g., Gmail, Microsoft 365, Google Docs, Zoom, Salesforce).",
+      "source_reference": "Page 8"
+    }
+  ],
+  "timeline": [],
+  "comparisons": [
+    {
+      "title": "Comparing IaaS, PaaS, and SaaS",
+      "columns": ["IaaS", "PaaS", "SaaS"],
+      "rows": [
+        {
+          "criterion": "You manage",
+          "values": ["Apps, data, runtime, OS", "Apps and data only", "Nothing — just use it"]
+        },
+        {
+          "criterion": "Provider manages",
+          "values": ["Servers, storage, network", "OS, servers, storage, network", "Everything"]
+        },
+        {
+          "criterion": "Best for",
+          "values": ["IT teams needing full control", "Developers building apps", "End users needing a ready tool"]
+        },
+        {
+          "criterion": "Example",
+          "values": ["Amazon EC2", "Azure App Service", "Google Docs"]
+        }
+      ]
+    }
+  ],
+  "real_world_examples": [
+    {
+      "text": "Amazon EC2, Microsoft Azure Virtual Machines, and Google Compute Engine are IaaS offerings.",
+      "source_reference": "Page 6"
+    },
+    {
+      "text": "Google App Engine, Microsoft Azure App Service, and Heroku are PaaS offerings.",
+      "source_reference": "Page 7"
+    },
+    {
+      "text": "Gmail, Microsoft 365, Google Docs, Zoom, and Salesforce are SaaS offerings.",
+      "source_reference": "Page 8"
+    }
+  ],
+  "common_confusions": [
+    {
+      "concept_a": "IaaS",
+      "concept_b": "PaaS",
+      "difference": "IaaS gives you raw infrastructure (VMs, storage, networking) and you install and manage the OS and runtime yourself. PaaS already provides the OS, runtime, and tools, so you only manage your application and data."
+    },
+    {
+      "concept_a": "PaaS",
+      "concept_b": "SaaS",
+      "difference": "PaaS is a platform for building your own applications. SaaS is a finished application you use directly — you don't build anything, you just log in and use it."
+    }
+  ],
+  "estimated_minutes": 7,
+  "quiz": {
+    "title": "Cloud Service Models Quiz",
+    "questions": [
+      {
+        "order": 1,
+        "text": "Which service model requires you to manage the operating system, runtime, and applications yourself, while the provider only manages servers, storage, and networking?",
+        "difficulty": "medium",
+        "choices": [
+          {"text": "Infrastructure as a Service (IaaS)", "is_correct": true},
+          {"text": "Platform as a Service (PaaS)", "is_correct": false},
+          {"text": "Software as a Service (SaaS)", "is_correct": false},
+          {"text": "Hardware as a Service (HaaS)", "is_correct": false}
+        ],
+        "explanation": "IaaS provides only the underlying infrastructure — virtual machines, storage, and networking. The customer is responsible for installing and managing the operating system, runtime, and applications on top of it."
+      },
+      {
+        "order": 2,
+        "text": "A developer wants to write and deploy an application without worrying about managing servers or operating systems. Which service model fits this need best?",
+        "difficulty": "easy",
+        "choices": [
+          {"text": "Infrastructure as a Service (IaaS)", "is_correct": false},
+          {"text": "Platform as a Service (PaaS)", "is_correct": true},
+          {"text": "Software as a Service (SaaS)", "is_correct": false}
+        ],
+        "explanation": "PaaS provides a ready-made platform — operating system, runtime, and development tools — so developers can focus on writing and deploying code instead of managing infrastructure."
+      },
+      {
+        "order": 3,
+        "text": "Which of the following is an example of a SaaS product?",
+        "difficulty": "easy",
+        "choices": [
+          {"text": "Amazon EC2", "is_correct": false},
+          {"text": "Google App Engine", "is_correct": false},
+          {"text": "Google Docs", "is_correct": true},
+          {"text": "Azure Virtual Machines", "is_correct": false}
+        ],
+        "explanation": "Google Docs is a fully-built application delivered over the internet and used directly through a browser, which is the defining trait of Software as a Service."
+      }
+    ]
+  }
+}

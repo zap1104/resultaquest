@@ -6,6 +6,7 @@ from dotenv import load_dotenv, find_dotenv
 from pptx import Presentation
 from google import genai
 from google.genai import types
+from .schemas import GeneratedJourney
 
 # Force Python to find the .env file wherever it is
 load_dotenv(find_dotenv())
@@ -81,7 +82,7 @@ def generate_course_journey(course, uploaded_file=None):
             print(f"[Gemini Text Failure]: {e}")
 
     print("[Falling back to mock course journey]")
-    return _generate_mock_journey(course.title)
+    return _generate_mock_journey(course)
 
 
 def _get_curriculum_prompt(course_title):
@@ -174,25 +175,71 @@ def _validate_response(raw_json):
     raise ValueError("Invalid curriculum structure returned by Gemini.")
 
 
-def _generate_mock_journey(title):
-    return {
+def _generate_mock_journey(course):
+    """Fallback content used when Gemini is unavailable or fails. Builds a
+    plain dict, then validates it through GeneratedJourney before returning
+    — this guarantees the fallback path can never silently drift out of
+    sync with the schema Gemini output must also satisfy. If a teammate
+    edits this function and breaks the contract (e.g. forgets an
+    explanation, adds two correct choices), this raises immediately in
+    tests rather than creating malformed rows in the database.
+    """
+    raw_journey = {
+        "schema_version": "1.0",
+        "course": {
+            "title": course.title,
+            "description": "A prototype learning path generated from the uploaded study material.",
+            "source_type": "other",
+            "difficulty": "beginner",
+        },
         "chapters": [
             {
-                "title": "Core Subject Overview",
-                "review_content": "This chapter introduces fundamental principles. Master these basics before proceeding to specialized applications.",
+                "order": 1,
+                "title": "Core Concepts",
+                "overview": "This chapter introduces the main ideas found in the uploaded material.",
+                "key_terms": [
+                    {
+                        "term": "Core Concept",
+                        "definition": "A central idea that supports understanding of the broader subject.",
+                        "source_reference": None,
+                    }
+                ],
+                "analogy": None,
+                "quick_facts": [
+                    {
+                        "text": "Reviewing key definitions before attempting a quiz can improve conceptual recall.",
+                        "source_reference": None,
+                    }
+                ],
+                "timeline": [],
+                "comparisons": [],
+                "real_world_examples": [],
+                "common_confusions": [],
+                "estimated_minutes": 5,
                 "quiz": {
+                    "title": "Core Concepts Quiz",
                     "questions": [
                         {
-                            "text": "What is the primary objective of this introductory module?",
+                            "order": 1,
+                            "text": "What is the purpose of identifying a core concept?",
+                            "difficulty": "easy",
                             "choices": [
-                                {"text": "Establish core theoretical foundations", "is_correct": True},
-                                {"text": "Skip directly to final evaluation", "is_correct": False},
-                                {"text": "Ignore prerequisite knowledge", "is_correct": False},
-                                {"text": "Perform arbitrary calculations", "is_correct": False}
-                            ]
+                                {"text": "To understand the central idea of the material", "is_correct": True},
+                                {"text": "To replace all detailed study", "is_correct": False},
+                                {"text": "To avoid reviewing the source", "is_correct": False},
+                                {"text": "To remove the need for assessment", "is_correct": False},
+                            ],
+                            "explanation": (
+                                "A core concept expresses one of the main ideas needed to "
+                                "understand the subject. Identifying it helps organize "
+                                "supporting definitions, facts, and examples."
+                            ),
                         }
-                    ]
-                }
+                    ],
+                },
             }
-        ]
+        ],
     }
+
+    journey = GeneratedJourney.model_validate(raw_journey)
+    return journey.model_dump()
