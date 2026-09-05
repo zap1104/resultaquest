@@ -19,6 +19,10 @@ class QuestionAdmin(admin.ModelAdmin):
     list_display = ('text', 'quiz')
     inlines = [ChoiceInline]
 
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'current_level', 'total_xp', 'streak_days', 'last_study_date')
+
 @admin.register(QuizAttempt)
 class QuizAttemptAdmin(admin.ModelAdmin):
     list_display = ('user', 'quiz', 'score', 'total_questions', 'xp_earned', 'completed_at')

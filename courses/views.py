@@ -1,17 +1,18 @@
 import json
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
-from .forms import CourseForm
-from .models import Chapter, Choice, Course, Question, Quiz, UserProfile, XPTransaction, QuizAttempt
+from .models import Chapter, Choice, Course, Question, Quiz, QuizAttempt, UserProfile, XPTransaction
 from .services import generate_course_journey
 
-# ... (auth_portal, dashboard, and course_list remain exactly the same) ...
+
 def auth_portal(request):
+    """Game launcher landing page with tabbed Login and Sign Up."""
     if request.user.is_authenticated:
         return redirect('courses:dashboard')
 
@@ -41,25 +42,34 @@ def auth_portal(request):
         'active_tab': active_tab,
     })
 
+
 @login_required
 def dashboard(request):
+    """The central dashboard displaying stats, progress, and daily goals."""
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     courses = list(Course.objects.filter(user=request.user).prefetch_related('chapters'))
-    
+
+    # XP math: 100 XP per level
     xp_needed_next = profile.current_level * 100
     xp_percentage = min(int((profile.total_xp / max(xp_needed_next, 1)) * 100), 100)
-    
+
+    # Calculate progress for each course
     for course in courses:
         total_chapters = course.chapters.count()
         course.progress_pct = 40 if total_chapters > 1 else (15 if total_chapters == 1 else 0)
 
     recent_course = courses[0] if courses else None
 
+    # Calculate real achievement unlocks
     unlocked_count = 0
-    if len(courses) > 0: unlocked_count += 1
-    if profile.total_xp >= 20: unlocked_count += 1
-    if profile.streak_days >= 7: unlocked_count += 1
-    if profile.current_level >= 5: unlocked_count += 1
+    if len(courses) > 0:
+        unlocked_count += 1
+    if profile.total_xp >= 20:
+        unlocked_count += 1
+    if profile.streak_days >= 7:
+        unlocked_count += 1
+    if profile.current_level >= 5:
+        unlocked_count += 1
 
     return render(request, 'courses/dashboard.html', {
         'profile': profile,
@@ -69,6 +79,7 @@ def dashboard(request):
         'recent_course': recent_course,
         'unlocked_count': unlocked_count,
     })
+
 
 @login_required
 def course_list(request):
@@ -80,6 +91,7 @@ def course_list(request):
 def course_create(request):
     if request.method == 'POST':
         uploaded_file = request.FILES.get('content_file')
+
         if uploaded_file:
             raw_name = uploaded_file.name.rsplit('.', 1)[0]
             title = raw_name.replace('_', ' ').replace('-', ' ').title()
@@ -89,15 +101,18 @@ def course_create(request):
         course = Course.objects.create(
             user=request.user,
             title=title,
-            description="AI-generated learning path based on your uploaded materials."
+            description="AI-generated learning path based on your uploaded materials.",
         )
-        
+
         _build_journey(course)
+
         return redirect('courses:course_detail', pk=course.pk)
-        
+
     return render(request, 'courses/course_form.html')
 
+
 def _build_journey(course):
+    """Runs the AI step and persists Chapters and Quizzes."""
     journey = generate_course_journey(course)
     course.structured_content = journey
     course.save(update_fields=['structured_content'])
@@ -122,10 +137,12 @@ def _build_journey(course):
                         is_correct=choice.get('is_correct', False),
                     )
 
+
 @login_required
 def course_detail(request, pk):
     course = get_object_or_404(Course, pk=pk, user=request.user)
     return render(request, 'courses/course_detail.html', {'course': course})
+
 
 @login_required
 def chapter_review(request, pk):
@@ -136,6 +153,7 @@ def chapter_review(request, pk):
         'has_quiz': has_quiz,
     })
 
+
 @login_required
 def chapter_quiz(request, pk):
     chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
@@ -145,10 +163,15 @@ def chapter_quiz(request, pk):
         'quiz': quiz,
     })
 
+
 @login_required
 @require_POST
 def submit_quiz(request, pk):
-    """Grades a quiz attempt server-side and awards XP."""
+    """Grades a quiz attempt server-side. Expects a JSON body:
+        {"answers": {"<question_id>": <choice_id>, ...}}
+    Never trusts anything the client claims about correctness — every
+    choice's is_correct flag is re-checked against the database here.
+    """
     chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
     quiz = getattr(chapter, 'quiz', None)
     if quiz is None:
@@ -198,11 +221,15 @@ def submit_quiz(request, pk):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     profile.award_xp(xp_earned, reason=f'Quiz: {chapter.title}')
 
+    # SPRINT C: a completed quiz counts as a study activity for streak purposes
+    profile.record_study_activity()
+
     return JsonResponse({
         'score': score,
         'total_questions': total_questions,
         'xp_earned': xp_earned,
         'new_total_xp': profile.total_xp,
         'new_level': profile.current_level,
+        'new_streak': profile.streak_days,
         'results': results,
     })
