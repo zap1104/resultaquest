@@ -91,78 +91,85 @@ def course_list(request):
 def course_create(request):
     if request.method == 'POST':
         uploaded_file = request.FILES.get('content_file')
-        extracted_text = ""
         
-        if uploaded_file:
-            raw_name = uploaded_file.name.rsplit('.', 1)[0]
-            title = raw_name.replace('_', ' ').replace('-', ' ').title()
-            extracted_text = extract_text_from_file(uploaded_file)
-        else:
-            title = "Untitled Course"
+        if not uploaded_file:
+            return render(request, 'courses/course_form.html', {
+                'error': 'Please select a study material to upload.'
+            })
 
-        course = Course.objects.create(
-            user=request.user,
-            title=title,
-            syllabus_text=extracted_text,
-            description="AI-generated learning path based on your uploaded materials."
-        )
-        
-        # Pass the uploaded file directly to allow multimodal processing
-        _build_journey(course, uploaded_file=uploaded_file)
-        return redirect('courses:course_detail', pk=course.pk)
+        raw_name = uploaded_file.name.rsplit('.', 1)[0]
+        title = raw_name.replace('_', ' ').replace('-', ' ').strip().title()
+
+        try:
+            with transaction.atomic():
+                extracted_text = extract_text_from_file(uploaded_file)
+                course = Course.objects.create(
+                    user=request.user,
+                    title=title or "Untitled Course",
+                    syllabus_text=extracted_text,
+                    description="AI-generated learning path based on your uploaded materials."
+                )
+                _build_journey(course, uploaded_file=uploaded_file)
+                
+            return redirect('courses:course_detail', pk=course.pk)
+
+        except Exception as e:
+            print(f"[Course Generation Failed]: {repr(e)}")
+            return render(request, 'courses/course_form.html', {
+                'generation_failed': True,
+                'previous_filename': uploaded_file.name,
+            })
         
     return render(request, 'courses/course_form.html')
 
 
 @transaction.atomic
 def _build_journey(course, uploaded_file=None, journey_override=None):
-    """Runs the AI step and persists Chapters/Quizzes/Questions/Choices
-    atomically — if any step fails partway through, nothing from this
-    call is left in the database.
-
-    Uses required-key access (journey["title"], not journey.get("title", ""))
-    deliberately: once generate_course_journey() guarantees Pydantic-validated
-    output, a missing key means the contract was violated somewhere upstream.
-    Silently defaulting to '' would hide that violation as a blank row in
-    the database instead of surfacing it as a loud, debuggable exception.
-
-    journey_override exists only for testing _build_journey's transactional
-    behavior in isolation, without needing to fabricate a failure inside
-    generate_course_journey/Gemini/the mock generator.
-    """
     journey = journey_override if journey_override is not None else generate_course_journey(
         course, uploaded_file=uploaded_file
     )
 
-    course.title = journey['course']['title']
-    course.description = journey['course']['description']
+    # Safe extraction with fallback to uploaded filename/defaults
+    course_meta = journey.get('course', {})
+    course.title = course_meta.get('title') or journey.get('title') or course.title
+    course.description = course_meta.get('description') or journey.get('description') or course.description
     course.structured_content = journey
     course.save(update_fields=['title', 'description', 'structured_content'])
 
-    for chapter_data in journey['chapters']:
+    chapters_data = journey.get('chapters', [])
+    if not chapters_data:
+        raise ValueError("AI response did not contain any valid chapters.")
+
+    for idx, chapter_data in enumerate(chapters_data, start=1):
         chapter = Chapter.objects.create(
             course=course,
-            order=chapter_data['order'],
-            title=chapter_data['title'],
-            review_content=chapter_data.get('overview', ''),
+            order=chapter_data.get('order', idx),
+            title=chapter_data.get('title', f"Chapter {idx}"),
+            review_content=chapter_data.get('review_content') or chapter_data.get('overview', ''),
             source_data=chapter_data,
         )
 
-        quiz_data = chapter_data['quiz']
-        quiz = Quiz.objects.create(chapter=chapter, title=quiz_data['title'])
+        quiz_data = chapter_data.get('quiz')
+        if not quiz_data:
+            continue
 
-        for question_data in quiz_data['questions']:
+        quiz = Quiz.objects.create(
+            chapter=chapter, 
+            title=quiz_data.get('title', f"{chapter.title} Quiz")
+        )
+
+        for q_idx, question_data in enumerate(quiz_data.get('questions', []), start=1):
             question = Question.objects.create(
                 quiz=quiz,
-                order=question_data['order'],
-                text=question_data['text'],
+                order=question_data.get('order', q_idx),
+                text=question_data.get('text', ''),
                 explanation=question_data.get('explanation', ''),
             )
-            for choice_data in question_data['choices']:
+            for choice_data in question_data.get('choices', []):
                 Choice.objects.create(
                     question=question,
-                    text=choice_data['text'],
-                    is_correct=choice_data['is_correct'],
+                    text=choice_data.get('text', ''),
+                    is_correct=choice_data.get('is_correct', False),
                 )
 
 
