@@ -10,7 +10,7 @@
 <div class="portal-atmosphere">
     <div class="glow-orb orb-primary"></div>
     <div class="glow-orb orb-cyan"></div>
-    
+
     <svg class="portal-particles" viewBox="0 0 1200 800" preserveAspectRatio="none">
         <circle class="particle p-1" cx="150" cy="180" r="3" />
         <polygon class="particle p-2" points="920,120 926,134 940,134 930,144 934,158 920,148 906,158 910,144 900,134 914,134" />
@@ -21,21 +21,21 @@
 </div>
 
 <div class="launcher-container">
-    
+
     <!-- LEFT PANEL: 60% Showcase + Live Hologram Mascot -->
     <section class="launcher-showcase">
         <div class="showcase-header">
             <span class="launcher-badge">⚡ AI-POWERED QUEST ENGINE</span>
-            <h1 class="launcher-hero">Turn Your Syllabus <br><span class="hero-highlight">Into a Game.</span></h1>
+            <h1 class="launcher-hero">Turn Your Syllabus <br><span class="hero-highlight pixel-hero">Into a Game.</span></h1>
             <p class="launcher-subtext">
                 Upload modules, notes, and assignments. StudyQuest transforms raw text into interactive quizzes, flashcards, and step-by-step learning journeys.
             </p>
 
+            <!-- Trimmed to 3 pills, single row, no wrap -->
             <div class="feature-pills">
-                <div class="pill">🤖 Gemini AI Syllabus Parser</div>
+                <div class="pill">🤖 AI Syllabus Parser</div>
                 <div class="pill">⚔️ Kahoot-Style Quizzes</div>
-                <div class="pill">🔥 XP & Daily Streaks</div>
-                <div class="pill">🗺️ Quest Map Progression</div>
+                <div class="pill">🔥 XP &amp; Daily Streaks</div>
             </div>
         </div>
 
@@ -43,21 +43,21 @@
         <div class="mascot-stage">
             <div class="mascot-wrap">
                 <img src="{% static 'courses/images/mascot.png' %}" alt="StudyQuest Student Mascot" class="mascot-img">
-                
+
                 <!-- Live UI Projection over the Holographic Board -->
                 <div class="hologram-hud">
                     <div class="hud-header">
-                        <span class="hud-tag">ACTIVE QUESTS</span>
-                        <span class="hud-xp">+150 XP Today</span>
+                        <span class="hud-tag">ACTIVE GOALS</span>
+                        <span class="hud-xp pixel-font">+150 XP</span>
                     </div>
                     <ul class="hud-tasks">
                         <li class="task-done"><span class="check">✓</span> Review TCP/IP Handshake</li>
                         <li class="task-done"><span class="check">✓</span> 10 Flashcards Cleared</li>
-                        <li class="task-active"><span class="dot"></span> Module 2: Arena Quiz</li>
+                        <li class="task-active"><span class="dot"></span> Chapter 2 Quiz</li>
                     </ul>
                     <div class="hud-footer">
                         <span class="streak-badge">🔥 7-Day Streak</span>
-                        <span class="lvl-badge">Lv. 4 Scholar</span>
+                        <span class="lvl-badge pixel-font">LV.4</span>
                     </div>
                 </div>
             </div>
@@ -67,31 +67,31 @@
     <!-- RIGHT PANEL: 40% Glassmorphic Auth Gate -->
     <section class="launcher-gate">
         <div class="auth-card">
-            
+
             <div class="auth-tabs">
                 <button type="button" class="tab-btn {% if active_tab == 'login' %}active{% endif %}" onclick="switchTab('login')">
-                    Continue Quest
+                    Log In
                 </button>
                 <button type="button" class="tab-btn {% if active_tab == 'signup' %}active{% endif %}" onclick="switchTab('signup')">
-                    Start New Quest
+                    Sign Up
                 </button>
             </div>
 
             <!-- Login View -->
             <div id="tab-login" class="tab-content {% if active_tab != 'login' %}hidden{% endif %}">
-                <h2 class="auth-title">Resume Adventure</h2>
-                <p class="auth-hint">Log in to protect your study streak and claim daily XP.</p>
-                
+                <h2 class="auth-title">Welcome Back</h2>
+                <p class="auth-hint">Log in to keep your streak and pick up where you left off.</p>
+
                 <form method="post" class="stacked-form auth-form">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="login">
-                    
+
                     <label for="id_username">Username</label>
                     {{ login_form.username }}
-                    
+
                     <label for="id_password">Password</label>
                     {{ login_form.password }}
-                    
+
                     {% if login_form.errors %}
                         <p class="form-error">Invalid credentials. Please try again.</p>
                     {% endif %}
@@ -104,13 +104,13 @@
 
             <!-- Signup View -->
             <div id="tab-signup" class="tab-content {% if active_tab != 'signup' %}hidden{% endif %}">
-                <h2 class="auth-title">Create Character</h2>
+                <h2 class="auth-title">Create Your Account</h2>
                 <p class="auth-hint">Join StudyQuest and turn exam prep into a game.</p>
-                
+
                 <form method="post" class="stacked-form auth-form">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="signup">
-                    
+
                     {% for field in signup_form %}
                         <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                         {{ field }}
@@ -124,7 +124,7 @@
                     {% endif %}
 
                     <button type="submit" class="btn btn-accent btn-chunky">
-                        Start First Quest &rarr;
+                        Create Account &rarr;
                     </button>
                 </form>
             </div>

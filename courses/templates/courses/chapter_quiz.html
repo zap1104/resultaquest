@@ -18,21 +18,24 @@
             <div id="quiz-question-wrap"></div>
 
             <div id="quiz-result" class="quiz-result hidden">
-                <h2>Quest Complete! 🎉</h2>
+                <h2>Quiz Cleared! 🎉</h2>
                 <p id="quiz-score"></p>
-                <a class="btn btn-primary" href="{% url 'courses:course_detail' chapter.course.pk %}">Back to Quest Map</a>
+                <p id="quiz-xp" style="font-weight: bold; color: var(--gold);"></p>
+                <a class="btn btn-primary" href="{% url 'courses:course_detail' chapter.course.pk %}">Back to Learning Path</a>
             </div>
         </div>
 
         <script id="quiz-data" type="application/json">
             {
+                "chapterId": {{ chapter.pk }},
                 "questions": [
                     {% for q in quiz.questions.all %}
                     {
+                        "id": {{ q.id }},
                         "text": "{{ q.text|escapejs }}",
                         "choices": [
                             {% for c in q.choices.all %}
-                            {"text": "{{ c.text|escapejs }}", "isCorrect": {{ c.is_correct|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}
+                            {"id": {{ c.id }}, "text": "{{ c.text|escapejs }}"}{% if not forloop.last %},{% endif %}
                             {% endfor %}
                         ]
                     }{% if not forloop.last %},{% endif %}
@@ -41,6 +44,7 @@
             }
         </script>
         <script src="{% static 'courses/js/quiz.js' %}"></script>
+        <script src="{% static 'courses/js/quiz.js' %}?v=2"></script>
     {% else %}
         <p class="empty-state">No quiz questions yet for this chapter.</p>
     {% endif %}
