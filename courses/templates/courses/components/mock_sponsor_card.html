@@ -1,0 +1,141 @@
+{% load static %}
+
+<aside class="dashboard-sponsor-card" aria-label="Sponsored placement demonstration">
+    <div class="sponsor-label">
+        <span class="sponsor-sparkle" aria-hidden="true">✦</span>
+        <span>Sponsored Placement Demo</span>
+    </div>
+
+    <!-- 9:16 Frame with Hover Shield -->
+    <div class="sponsor-media-frame">
+        <div class="sponsor-video-shield" aria-hidden="true"></div>
+        <video
+            id="sponsor-video"
+            class="sponsor-video"
+            autoplay
+            muted
+            loop
+            playsinline
+            disablePictureInPicture
+            disableRemotePlayback
+            controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
+            tabindex="-1"
+            aria-hidden="true"
+            preload="auto"
+            poster="{% static 'courses/images/ads/studyfuel_poster.webp' %}"
+        >
+            <source src="{% static 'courses/videos/ads/studyfuel_loop.mp4' %}" type="video/mp4">
+            <source src="{% static 'courses/videos/ads/studyfuel_loop.webm' %}" type="video/webm">
+        </video>
+    </div>
+
+    <div class="sponsor-body">
+        <div class="sponsor-tag-row">
+            <span class="sponsor-pill">Blue Citrus</span>
+        </div>
+        <h3 class="sponsor-product-title">StudyFuel Focus</h3>
+        <p class="sponsor-desc">A refreshing companion for your next study session.</p>
+
+        <button type="button" class="btn btn-secondary btn-sm sponsor-cta" id="open-sample-offer-btn">
+            View Sample Offer
+        </button>
+
+        <div class="sponsor-sub-action">
+            <button type="button" class="sponsor-upgrade-link" id="open-plus-preview-btn">
+                Go ad-free with StudyQuest Plus &rarr;
+            </button>
+        </div>
+    </div>
+</aside>
+
+<!-- Prototype Disclaimer Modal -->
+<div id="sample-offer-modal" class="sponsor-modal-backdrop" hidden aria-hidden="true">
+    <div class="sponsor-modal-card">
+        <div class="modal-icon-wrap">🍹</div>
+        <span class="modal-eyebrow">Prototype Demonstration</span>
+        <h3>StudyFuel Focus Demo Offer</h3>
+        <p>
+            This fictional placement illustrates how verified student-brand partnerships can sponsor the 
+            free tier without running distracting ad banners during quizzes or lessons.
+        </p>
+        <div class="modal-callout">
+            <strong>Academic Note:</strong> No payment gateway or commercial network is connected.
+        </div>
+        <button type="button" class="btn btn-primary btn-block" id="close-offer-modal-btn">
+            Back to Dashboard
+        </button>
+    </div>
+</div>
+
+<!-- Mock Upgrade Modal -->
+<div id="plus-preview-modal" class="sponsor-modal-backdrop" hidden aria-hidden="true">
+    <div class="sponsor-modal-card">
+        <div class="modal-icon-wrap">⚡</div>
+        <span class="modal-eyebrow">Proposed Plan</span>
+        <h3>StudyQuest Plus</h3>
+        <ul class="modal-feature-list">
+            <li>✓ Completely ad-free study dashboard</li>
+            <li>✓ Unlimited document uploads & larger file sizes</li>
+            <li>✓ Advanced assessment generators (Essay & Rubrics)</li>
+            <li>✓ Comprehensive mastery & retention analytics</li>
+        </ul>
+        <button type="button" class="btn btn-primary btn-block" id="close-plus-modal-btn">
+            Close Preview
+        </button>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const video = document.getElementById('sponsor-video');
+        if (!video) return;
+
+        video.muted = true;
+        video.defaultMuted = true;
+
+        const attemptPlay = () => {
+            const p = video.play();
+            if (p !== undefined) {
+                p.catch(() => {
+                    const resume = () => {
+                        video.play();
+                        document.removeEventListener('click', resume);
+                    };
+                    document.addEventListener('click', resume, { once: true });
+                });
+            }
+        };
+
+        attemptPlay();
+
+        video.addEventListener('ended', () => {
+            video.currentTime = 0;
+            video.play();
+        });
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            video.pause();
+        }
+
+        const offerModal = document.getElementById('sample-offer-modal');
+        const plusModal = document.getElementById('plus-preview-modal');
+
+        const toggleModal = (modal, open) => {
+            if (!modal) return;
+            modal.hidden = !open;
+            modal.setAttribute('aria-hidden', (!open).toString());
+            document.body.style.overflow = open ? 'hidden' : '';
+        };
+
+        document.getElementById('open-sample-offer-btn')?.addEventListener('click', () => toggleModal(offerModal, true));
+        document.getElementById('close-offer-modal-btn')?.addEventListener('click', () => toggleModal(offerModal, false));
+        document.getElementById('open-plus-preview-btn')?.addEventListener('click', () => toggleModal(plusModal, true));
+        document.getElementById('close-plus-modal-btn')?.addEventListener('click', () => toggleModal(plusModal, false));
+
+        [offerModal, plusModal].forEach(modal => {
+            modal?.addEventListener('click', (e) => {
+                if (e.target === modal) toggleModal(modal, false);
+            });
+        });
+    });
+</script>
