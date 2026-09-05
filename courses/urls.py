@@ -11,4 +11,8 @@ urlpatterns = [
     path('chapters/<int:pk>/review/', views.chapter_review, name='chapter_review'),
     path('chapters/<int:pk>/quiz/', views.chapter_quiz, name='chapter_quiz'),
     path('chapters/<int:pk>/quiz/submit/', views.submit_quiz, name='submit_quiz'),
+    path('<int:pk>/edit/', views.course_edit, name='course_edit'),
+    path('<int:pk>/delete/', views.course_delete, name='course_delete'),
+    path('chapters/<int:pk>/rename/', views.chapter_rename, name='chapter_rename'),
+    path('chapters/<int:pk>/complete/', views.complete_chapter, name='complete_chapter'),
 ]

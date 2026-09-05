@@ -7,9 +7,9 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .models import Chapter, Choice, Course, Question, Quiz, QuizAttempt, UserProfile, XPTransaction
-from .services import generate_course_journey
-
+from .models import Chapter, Choice, Course, Question, Quiz, QuizAttempt, UserProfile, XPTransaction, ChapterCompletion
+from django.db import transaction
+from .services import generate_course_journey, extract_text_from_file
 
 def auth_portal(request):
     """Game launcher landing page with tabbed Login and Sign Up."""
@@ -91,68 +91,158 @@ def course_list(request):
 def course_create(request):
     if request.method == 'POST':
         uploaded_file = request.FILES.get('content_file')
-
+        extracted_text = ""
+        
         if uploaded_file:
             raw_name = uploaded_file.name.rsplit('.', 1)[0]
             title = raw_name.replace('_', ' ').replace('-', ' ').title()
+            extracted_text = extract_text_from_file(uploaded_file)
         else:
             title = "Untitled Course"
 
         course = Course.objects.create(
             user=request.user,
             title=title,
-            description="AI-generated learning path based on your uploaded materials.",
+            syllabus_text=extracted_text,
+            description="AI-generated learning path based on your uploaded materials."
         )
-
-        _build_journey(course)
-
+        
+        # Pass the uploaded file directly to allow multimodal processing
+        _build_journey(course, uploaded_file=uploaded_file)
         return redirect('courses:course_detail', pk=course.pk)
-
+        
     return render(request, 'courses/course_form.html')
 
 
-def _build_journey(course):
-    """Runs the AI step and persists Chapters and Quizzes."""
-    journey = generate_course_journey(course)
-    course.structured_content = journey
-    course.save(update_fields=['structured_content'])
+def _build_journey(course, uploaded_file=None):
+    """Runs the AI step and persists Chapters and Quizzes in an atomic block."""
+    journey = generate_course_journey(
+        course,
+        uploaded_file=uploaded_file
+    )
 
-    for i, chapter_data in enumerate(journey.get('chapters', []), start=1):
-        chapter = Chapter.objects.create(
-            course=course,
-            order=i,
-            title=chapter_data.get('title', f'Chapter {i}'),
-            review_content=chapter_data.get('review_content', ''),
-            source_data=chapter_data,
-        )
-        quiz_data = chapter_data.get('quiz')
-        if quiz_data:
-            quiz = Quiz.objects.create(chapter=chapter, title=f'{chapter.title} Quiz')
-            for j, q in enumerate(quiz_data.get('questions', []), start=1):
-                question = Question.objects.create(quiz=quiz, order=j, text=q.get('text', ''))
-                for choice in q.get('choices', []):
-                    Choice.objects.create(
-                        question=question,
-                        text=choice.get('text', ''),
-                        is_correct=choice.get('is_correct', False),
-                    )
+    if not journey or "chapters" not in journey:
+        return
+    
+    with transaction.atomic():
+        course.structured_content = journey
+
+        if course.pk:
+            course.save()
+
+        for i, chapter_data in enumerate(journey.get('chapters', []), start=1):
+            chapter = Chapter.objects.create(
+                course=course,
+                order=i,
+                title=chapter_data.get('title', f'Chapter {i}'),
+                review_content=chapter_data.get('review_content', ''),
+                source_data=chapter_data,
+            )
+            quiz_data = chapter_data.get('quiz')
+            if quiz_data:
+                quiz = Quiz.objects.create(chapter=chapter, title=f'{chapter.title} Quiz')
+                for j, q in enumerate(quiz_data.get('questions', []), start=1):
+                    question = Question.objects.create(quiz=quiz, order=j, text=q.get('text', ''))
+                    for choice in q.get('choices', []):
+                        Choice.objects.create(
+                            question=question,
+                            text=choice.get('text', ''),
+                            is_correct=choice.get('is_correct', False),
+                        )
 
 
 @login_required
 def course_detail(request, pk):
     course = get_object_or_404(Course, pk=pk, user=request.user)
-    return render(request, 'courses/course_detail.html', {'course': course})
+    chapters = list(course.chapters.all())
+    completed_quiz_ids = set(
+        QuizAttempt.objects.filter(
+            user=request.user,
+            quiz__chapter__course=course,
+        ).values_list('quiz_id', flat=True)
+    )
+    first_incomplete_found = False
+    for chapter in chapters:
+        quiz_id = chapter.quiz.id if hasattr(chapter, 'quiz') and chapter.quiz else None
+        if quiz_id and quiz_id in completed_quiz_ids:
+            chapter.progress_status = 'completed'
+        elif not first_incomplete_found:
+            chapter.progress_status = 'active'
+            first_incomplete_found = True
+        else:
+            chapter.progress_status = 'upcoming'
+    return render(request, 'courses/course_detail.html', {'course': course, 'chapters': chapters})
 
 
 @login_required
 def chapter_review(request, pk):
     chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
     has_quiz = hasattr(chapter, 'quiz')
+    question_count = chapter.quiz.questions.count() if has_quiz else 0
+    is_completed = ChapterCompletion.objects.filter(user=request.user, chapter=chapter).exists()
+
     return render(request, 'courses/chapter_review.html', {
         'chapter': chapter,
         'has_quiz': has_quiz,
+        'question_count': question_count,
+        'is_completed': is_completed,
     })
 
+
+@login_required
+@require_POST
+def complete_chapter(request, pk):
+    """Marks a chapter's review as read and awards a small, one-time XP
+    bonus. Safe to trigger client-side — there's no correctness to fake
+    here, only "did the button get pressed," and the unique_together
+    constraint on ChapterCompletion prevents farming XP by re-submitting.
+    """
+    chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
+
+    completion, created = ChapterCompletion.objects.get_or_create(user=request.user, chapter=chapter)
+
+    if created:
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        profile.award_xp(15, reason=f'Completed lesson: {chapter.title}')
+        profile.record_study_activity()
+        return JsonResponse({'awarded': True, 'xp_earned': 15, 'new_total_xp': profile.total_xp})
+
+    return JsonResponse({'awarded': False, 'xp_earned': 0})
+
+@login_required
+def course_edit(request, pk):
+    """Updates course title and description."""
+    course = get_object_or_404(Course, pk=pk, user=request.user)
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        if title:
+            course.title = title
+            course.description = description
+            course.save(update_fields=['title', 'description'])
+    return redirect('courses:course_detail', pk=course.pk)
+
+
+@login_required
+def course_delete(request, pk):
+    """Deletes a course and all associated chapters/quizzes via CASCADE."""
+    course = get_object_or_404(Course, pk=pk, user=request.user)
+    if request.method == 'POST':
+        course.delete()
+        return redirect('courses:course_list')
+    return redirect('courses:course_detail', pk=course.pk)
+
+
+@login_required
+def chapter_rename(request, pk):
+    """Renames an individual chapter."""
+    chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        if title:
+            chapter.title = title
+            chapter.save(update_fields=['title'])
+    return redirect('courses:course_detail', pk=chapter.course.pk)
 
 @login_required
 def chapter_quiz(request, pk):

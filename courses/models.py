@@ -16,9 +16,6 @@ class UserProfile(models.Model):
     last_study_date = models.DateField(null=True, blank=True)
 
     def award_xp(self, amount, reason):
-        """The only sanctioned way to add XP. Writes an XPTransaction,
-        bumps the cached total, and handles level-ups (100 XP per level).
-        """
         XPTransaction.objects.create(user=self.user, amount=amount, reason=reason)
         self.total_xp += amount
         xp_for_next_level = self.current_level * 100
@@ -28,29 +25,17 @@ class UserProfile(models.Model):
         self.save(update_fields=['total_xp', 'current_level'])
 
     def update_streak(self):
-        """Calculates and updates the user's daily study streak.
-        Call this (or record_study_activity, once other activity types
-        exist) any time a genuine study action happens — currently
-        wired to quiz submission only.
-        """
         today = timezone.now().date()
-
         if self.last_study_date == today:
-            return  # Already counted today, no double-increment
+            return
         elif self.last_study_date == today - timedelta(days=1):
-            self.streak_days += 1  # Sequential day, increment streak
+            self.streak_days += 1
         else:
-            self.streak_days = 1  # Missed a day (or first time), reset to 1
-
+            self.streak_days = 1
         self.last_study_date = today
         self.save(update_fields=['streak_days', 'last_study_date'])
 
     def record_study_activity(self):
-        """Single entry point for 'the user did something study-related
-        today'. Currently just calls update_streak(); once review
-        sessions / flashcards exist, route those through here too so
-        streak logic stays in one place.
-        """
         self.update_streak()
 
     def __str__(self):
@@ -175,3 +160,20 @@ class QuizAttempt(models.Model):
 
     def __str__(self):
         return f'{self.user.username} — {self.quiz} ({self.score}/{self.total_questions})'
+
+
+class ChapterCompletion(models.Model):
+    """Tracks that a user has marked a chapter's review content as read.
+    Existence of this row = "Mark Complete" was pressed; used both to
+    show the ✓ state and to prevent awarding the completion XP more
+    than once per user per chapter.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chapter_completions')
+    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='completions')
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'chapter')
+
+    def __str__(self):
+        return f'{self.user.username} — {self.chapter.title} (read)'

@@ -5,184 +5,94 @@
 
 {% block content %}
 <style>
-    /* 1. Hide global nav/footer for Focus Mode — theme toggle stays visible on purpose */
     .topbar, .footer { display: none !important; }
     body { background: var(--bg); }
+    .page { max-width: 760px; padding: 0 0 120px; margin: 0 auto; }
 
-    .page { max-width: 680px; padding: 0 0 120px; margin: 0 auto; }
-
-    /* 2. Focus Mode Header */
-    .quiz-focus-header {
-        display: flex;
-        align-items: center;
-        padding: 24px 20px 4px;
-        gap: 20px;
-    }
-    .quiz-exit-btn {
-        background: transparent;
-        border: none;
-        font-size: 1.5rem;
-        color: var(--muted);
-        cursor: pointer;
-        line-height: 1;
-        padding: 4px;
-        text-decoration: none;
-        transition: color 0.2s ease;
-    }
+    .quiz-focus-header { display: flex; align-items: center; padding: 24px 20px 4px; gap: 20px; }
+    .quiz-exit-btn { background: transparent; border: none; font-size: 1.5rem; color: var(--muted); cursor: pointer; line-height: 1; padding: 4px; text-decoration: none; transition: color 0.2s ease; }
     .quiz-exit-btn:hover { color: var(--danger); }
+    .quiz-progress-top { flex: 1; height: 14px; background: var(--surface-glass); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+    .quiz-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+    .quiz-progress-label { text-align: center; color: var(--muted); font-size: 0.85rem; font-weight: 700; margin: 6px 0 0; }
 
-    .quiz-progress-top {
-        flex: 1;
-        height: 14px;
-        background: var(--surface-glass);
-        border-radius: 999px;
-        overflow: hidden;
-        border: 1px solid var(--border);
-    }
-    .quiz-progress-fill {
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(90deg, var(--primary), var(--accent));
-        transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
+    .quiz-question-text { font-size: 1.4rem; font-weight: 800; margin: 32px 20px 24px; line-height: 1.4; text-align: center; }
 
-    .quiz-progress-label {
-        text-align: center;
-        color: var(--muted);
-        font-size: 0.85rem;
-        font-weight: 700;
-        margin: 6px 0 0;
-    }
-
-    /* 3. Question + lettered chunky choices */
-    .quiz-question-text {
-        font-size: 1.4rem;
-        font-weight: 800;
-        margin: 32px 20px 24px;
-        line-height: 1.4;
-    }
+    /* 2x2 answer grid — collapses to 1 column under 600px */
     .quiz-choices {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
         padding: 0 20px;
     }
-    .quiz-choice-chunky {
+    @media (max-width: 600px) {
+        .quiz-choices { grid-template-columns: 1fr; }
+    }
+
+    .quiz-option {
         display: flex;
         align-items: center;
         gap: 14px;
-        text-align: left;
-        padding: 16px 20px;
+        min-height: 88px;
+        padding: 18px;
         border-radius: 16px;
         border: 2px solid var(--border);
         background: var(--surface);
         color: var(--ink);
-        font-size: 1.05rem;
-        font-weight: 600;
         cursor: pointer;
-        box-shadow: 0 4px 0 var(--border);
-        transition: all 0.1s ease;
+        text-align: left;
         font-family: inherit;
-        width: 100%;
+        font-size: 1rem;
+        font-weight: 600;
+        transition: transform 0.1s ease, border-color 0.1s ease, background 0.1s ease, box-shadow 0.1s ease;
     }
-    .quiz-choice-chunky:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 0 var(--border);
+    .quiz-option:hover { transform: translateY(-2px); border-color: var(--primary); }
+    .quiz-option.selected {
         border-color: var(--primary);
+        background: rgba(108, 92, 231, 0.1);
+        box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.15);
     }
-    .quiz-choice-chunky.selected {
-        border-color: var(--primary);
-        background: rgba(108, 92, 231, 0.08);
-        box-shadow: 0 4px 0 var(--primary-dark);
-    }
-    .quiz-choice-letter {
+
+    .quiz-letter {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: var(--bg);
+        border: 2px solid var(--border);
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background: var(--bg);
-        border: 2px solid var(--border);
         font-weight: 800;
-        font-size: 0.85rem;
         flex-shrink: 0;
-        transition: all 0.1s ease;
     }
-    .quiz-choice-chunky.selected .quiz-choice-letter {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: #fff;
-    }
+    .quiz-option.selected .quiz-letter { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-    .quiz-confirm-btn {
-        display: block;
-        width: calc(100% - 40px);
-        margin: 24px 20px 0;
-        padding: 16px;
-        font-size: 1.05rem;
-    }
-    .quiz-confirm-btn:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        transform: none !important;
-        box-shadow: none !important;
-    }
-    
-    /* Quiz Submitted Anchor State */
+    .quiz-confirm-btn { display: block; width: calc(100% - 40px); margin: 28px 20px 0; padding: 16px; font-size: 1.05rem; }
+    .quiz-confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+    .quiz-submitted-anchor { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 45vh; text-align: center; }
     .quiz-submitted-check { font-size: 2.5rem; margin-bottom: 8px; }
+    .quiz-submitted-title { font-size: 1.6rem; font-weight: 800; color: var(--ink); }
+    .quiz-submitted-sub { color: var(--muted); margin-top: 8px; font-size: 0.95rem; }
     .quiz-submitted-status { color: var(--primary); font-size: 0.85rem; font-weight: 700; margin-top: 4px; }
 
-    /* 4. Animated Bottom Sheet */
     .result-sheet {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background: var(--surface);
-        border-top: 1px solid var(--border);
-        border-radius: 28px 28px 0 0;
-        padding: 32px 24px 48px;
+        position: fixed; bottom: 0; left: 0; width: 100%;
+        background: var(--surface); border-top: 1px solid var(--border);
+        border-radius: 28px 28px 0 0; padding: 32px 24px 48px;
         box-shadow: 0 -12px 40px rgba(0,0,0,0.15);
         transform: translateY(110%);
         transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 18px;
+        z-index: 1000; display: flex; flex-direction: column; align-items: center; gap: 18px;
     }
     .result-sheet.open { transform: translateY(0); }
-
-    .sheet-stats {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 28px;
-        margin: 4px 0;
-    }
+    .sheet-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 36px; margin: 8px 0 4px; }
     .sheet-stat-box { text-align: center; }
-    .sheet-stat-val { font-size: 1.6rem; font-weight: 900; color: var(--ink); }
+    .sheet-stat-val { font-size: 1.75rem; font-weight: 900; color: var(--ink); }
     .sheet-stat-val.gold { color: var(--gold); }
     .sheet-stat-val.streak { color: #ff8a3d; }
-    .sheet-stat-label {
-        font-size: 0.72rem;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 700;
-        margin-top: 4px;
-    }
-
-    .sheet-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        width: 100%;
-        max-width: 320px;
-    }
-
-    /* TODO (next sprint): "Review Answers" */
+    .sheet-stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-top: 6px; }
+    .sheet-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
     .sheet-review-btn { opacity: 0.5; cursor: not-allowed; }
 </style>
 
@@ -199,33 +109,15 @@
 
     <div id="result-sheet" class="result-sheet">
         <h2 style="margin: 0; font-size: 1.6rem;">Quiz Complete! 🎉</h2>
-
         <div class="sheet-stats">
-            <div class="sheet-stat-box">
-                <div id="sheet-score" class="sheet-stat-val">0/0</div>
-                <div class="sheet-stat-label">Score</div>
-            </div>
-            <div class="sheet-stat-box">
-                <div id="sheet-xp" class="sheet-stat-val gold">+0</div>
-                <div class="sheet-stat-label">XP Earned</div>
-            </div>
-            <div class="sheet-stat-box">
-                <div id="sheet-level" class="sheet-stat-val">1</div>
-                <div class="sheet-stat-label">Level</div>
-            </div>
-            <div class="sheet-stat-box">
-                <div id="sheet-streak" class="sheet-stat-val streak">0</div>
-                <div class="sheet-stat-label">Day Streak</div>
-            </div>
+            <div class="sheet-stat-box"><div id="sheet-score" class="sheet-stat-val">0/0</div><div class="sheet-stat-label">Score</div></div>
+            <div class="sheet-stat-box"><div id="sheet-xp" class="sheet-stat-val gold">+0</div><div class="sheet-stat-label">XP Earned</div></div>
+            <div class="sheet-stat-box"><div id="sheet-level" class="sheet-stat-val">1</div><div class="sheet-stat-label">Level</div></div>
+            <div class="sheet-stat-box"><div id="sheet-streak" class="sheet-stat-val streak">0</div><div class="sheet-stat-label">Day Streak</div></div>
         </div>
-
         <div class="sheet-actions">
-            <button type="button" class="btn btn-secondary sheet-review-btn" disabled title="Coming soon">
-                Review Answers
-            </button>
-            <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="btn btn-primary btn-chunky" style="text-align: center;">
-                Continue Learning &rarr;
-            </a>
+            <button type="button" class="btn btn-secondary sheet-review-btn" disabled title="Coming soon">Review Answers</button>
+            <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="btn btn-primary btn-chunky" style="text-align: center;">Continue Learning &rarr;</a>
         </div>
     </div>
 
@@ -248,8 +140,7 @@
         }
     </script>
 
-    <script src="{% static 'courses/js/quiz.js' %}?v=5"></script>
-
+    <script src="{% static 'courses/js/quiz.js' %}?v=6"></script>
 {% else %}
     <div style="padding: 60px 20px; text-align: center;">
         <p class="empty-state">No quiz questions yet for this chapter.</p>
