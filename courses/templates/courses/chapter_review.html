@@ -18,7 +18,7 @@
     }
     .review-workspace.reader-open { gap: 28px; }
 
-    /* 3. EXPANDED HUB WORKSPACE */
+    /* 3. HUB WORKSPACE (LEFT PANE) */
     .lesson-hub-pane {
         width: min(840px, 100%); height: 100%; min-width: 0; display: flex; align-items: center;
         justify-content: center; flex: 0 0 auto; overflow: hidden;
@@ -40,7 +40,6 @@
         margin: 0 auto; 
     }
 
-    /* Navigation & Progress */
     .lesson-back-link { display: inline-flex; align-items: center; gap: 7px; width: fit-content; color: var(--muted); font-size: 0.9rem; font-weight: 700; text-decoration: none; transition: color 0.18s ease; }
     .lesson-back-link:hover { color: var(--primary); }
 
@@ -49,7 +48,6 @@
     .lesson-progress-track { width: 100%; height: 8px; overflow: hidden; border-radius: 999px; background: var(--border); }
     .lesson-progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.45s ease; }
 
-    /* Heading */
     .lesson-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 18px; min-width: 0; }
     .lesson-icon { width: 52px; height: 52px; display: grid; place-items: center; flex-shrink: 0; border-radius: 14px; background: rgba(108, 92, 231, 0.14); color: var(--primary); font-size: 1.5rem; }
     .lesson-heading-copy { min-width: 0; }
@@ -59,7 +57,6 @@
     .lesson-completed-chip { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; padding: 6px 14px; border-radius: 999px; background: rgba(0, 194, 168, 0.12); color: var(--accent); font-size: 0.8rem; font-weight: 800; transition: opacity 0.2s ease, visibility 0s linear 0s; }
     .reader-open .lesson-completed-chip { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.16s ease, visibility 0s linear 0.16s; }
 
-    /* Expanded Preview Card */
     .lesson-preview-card { min-width: 0; padding: 28px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
     .lesson-preview-label { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; padding: 5px 11px; border-radius: 999px; background: rgba(0, 194, 168, 0.11); color: var(--accent); font-size: 0.74rem; font-weight: 800; }
     .lesson-preview { position: relative; max-height: 165px; margin-bottom: 20px; overflow: hidden; color: var(--ink); }
@@ -71,7 +68,6 @@
     .lesson-actions .btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; text-align: center; padding-block: 12px; font-size: 0.98rem; }
     .lesson-complete-btn.is-complete, .lesson-complete-btn:disabled { cursor: default; }
 
-    /* Expanded Activities */
     .lesson-activities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .lesson-activity { min-width: 0; min-height: 86px; display: flex; align-items: center; gap: 16px; padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--ink); text-decoration: none; transition: transform 0.16s ease, border-color 0.16s ease; }
     .lesson-activity:not(.disabled):hover { transform: translateY(-2px); border-color: var(--primary); }
@@ -83,7 +79,7 @@
     .activity-copy span { display: block; overflow: hidden; color: var(--muted); font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
     .activity-arrow { flex-shrink: 0; color: var(--muted); font-size: 1.15rem; }
 
-    /* 4. RIGHT WORKSPACE: FULL LESSON READER */
+    /* 4. CHAPTER REVIEW READER (RIGHT PANE) */
     .lesson-reader-pane {
         width: 0; height: 100%; min-width: 0; flex: 0 0 auto; display: flex; flex-direction: column;
         overflow: hidden; border: 0 solid var(--border); border-radius: 18px; background: var(--surface);
@@ -110,6 +106,75 @@
     .reader-content::-webkit-scrollbar-track { background: transparent; }
     .reader-content::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border); }
     .reader-content::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+    /* 5. CRAM WIDGET STYLES (D-4) */
+    .cram-overview-card {
+        background: rgba(108, 92, 231, 0.08);
+        border: 1px solid rgba(108, 92, 231, 0.25);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-bottom: 24px;
+    }
+    .cram-badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--primary);
+        margin-bottom: 6px;
+    }
+    .cram-lead { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin: 0; color: var(--ink); }
+
+    .analogy-callout {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        background: rgba(0, 194, 168, 0.08);
+        border-left: 4px solid var(--accent);
+        border-radius: 8px;
+        padding: 14px 18px;
+        margin-bottom: 28px;
+    }
+    .analogy-icon { font-size: 1.4rem; line-height: 1; }
+    .analogy-callout p { margin: 4px 0 0; font-size: 0.95rem; color: var(--ink); line-height: 1.5; }
+
+    .cram-section { margin-bottom: 32px; }
+    .cram-section-title { font-size: 1.15rem; font-weight: 800; margin: 0 0 14px; color: var(--ink); }
+
+    .key-terms-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    @media (max-width: 600px) { .key-terms-grid { grid-template-columns: 1fr; } }
+    .key-term-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+    }
+    .key-term-title { display: block; font-weight: 700; font-size: 0.96rem; color: var(--accent); margin-bottom: 4px; }
+    .key-term-def { margin: 0; font-size: 0.88rem; line-height: 1.5; color: var(--muted); }
+
+    .comparison-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+    .cram-comparison-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; }
+    .cram-comparison-table th, .cram-comparison-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .cram-comparison-table th { background: rgba(255, 255, 255, 0.03); font-weight: 800; text-transform: uppercase; font-size: 0.75rem; }
+
+    .timeline-track { display: flex; flex-direction: column; gap: 16px; border-left: 2px solid var(--border); padding-left: 18px; margin-left: 8px; }
+    .timeline-node { position: relative; }
+    .timeline-node::before { content: ""; position: absolute; left: -24px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+    .timeline-period { font-size: 0.74rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .timeline-copy strong { display: block; font-size: 0.96rem; color: var(--ink); margin: 2px 0; }
+    .timeline-copy p { margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
+
+    .cram-facts-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+    .cram-facts-list li { position: relative; padding-left: 24px; font-size: 0.94rem; line-height: 1.6; color: var(--ink); }
+    .cram-facts-list li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 800; }
+
+    .confusions-grid { display: flex; flex-direction: column; gap: 12px; }
+    .confusion-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+    .confusion-vs { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .badge-vs { font-weight: 700; font-size: 0.88rem; color: var(--primary); }
+    .vs-divider { font-size: 0.74rem; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+    .confusion-diff { margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
 
     /* Responsive */
     @media (max-width: 1050px) {
@@ -152,14 +217,20 @@
             </header>
 
             <article class="lesson-preview-card">
-                <span class="lesson-preview-label">Lesson Preview</span>
+                <!-- D-2 Label updated -->
+                <span class="lesson-preview-label">Quick Review</span>
                 <div class="lesson-preview">
-                    {{ chapter.review_content|structured }}
+                    {% if chapter.source_data.overview %}
+                        <p>{{ chapter.source_data.overview }}</p>
+                    {% else %}
+                        {{ chapter.review_content|structured }}
+                    {% endif %}
                     <div class="lesson-preview-fade" aria-hidden="true"></div>
                 </div>
                 <div class="lesson-actions">
+                    <!-- D-2 Label updated -->
                     <button type="button" id="read-full-lesson-btn" class="btn btn-secondary" aria-controls="lesson-reader-pane" aria-expanded="false">
-                        <span>Read Full Lesson</span>
+                        <span>Chapter Review</span>
                         <span aria-hidden="true">&nearr;</span>
                     </button>
                     <button type="button" id="mark-complete-btn" class="btn btn-primary btn-chunky lesson-complete-btn {% if is_completed %}is-complete{% endif %}" data-chapter-id="{{ chapter.pk }}" {% if is_completed %}disabled{% endif %}>
@@ -199,19 +270,136 @@
         </div>
     </section>
 
-    <!-- PANE 2: FULL LESSON READER -->
-    <aside class="lesson-reader-pane" id="lesson-reader-pane" aria-hidden="true" aria-label="Full lesson reader">
+    <!-- PANE 2: CHAPTER REVIEW READER (D-2 Labels updated) -->
+    <aside class="lesson-reader-pane" id="lesson-reader-pane" aria-hidden="true" aria-label="Chapter review reader">
         <header class="reader-header">
             <div class="reader-heading">
-                <small>Full Lesson</small>
+                <!-- D-2 Label updated -->
+                <small>Chapter Review</small>
                 <h2>{{ chapter.title }}</h2>
             </div>
-            <button type="button" class="reader-close" id="close-reader-btn" aria-label="Close full lesson" title="Close full lesson">✕</button>
+            <button type="button" class="reader-close" id="close-reader-btn" aria-label="Close chapter review" title="Close chapter review">✕</button>
         </header>
 
         <div class="reader-content" id="reader-content" tabindex="0">
             <article class="reader-content-inner">
-                {{ chapter.review_content|structured }}
+                <!-- D-3 Dual-Mode Structured Content -->
+                {% if chapter.source_data.overview %}
+                    <!-- 1. CORE TAKEAWAY -->
+                    <div class="cram-overview-card">
+                        <span class="cram-badge">Core Takeaway</span>
+                        <p class="cram-lead">{{ chapter.source_data.overview }}</p>
+                    </div>
+
+                    <!-- 2. ANALOGY / MENTAL HOOK -->
+                    {% if chapter.source_data.analogy %}
+                        <div class="analogy-callout">
+                            <span class="analogy-icon">💡</span>
+                            <div>
+                                <strong>Think of it like: {{ chapter.source_data.analogy.label }}</strong>
+                                <p>{{ chapter.source_data.analogy.explanation }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- 3. KEY TERMS GRID -->
+                    {% if chapter.source_data.key_terms %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Key Terms & Definitions</h3>
+                            <div class="key-terms-grid">
+                                {% for kt in chapter.source_data.key_terms %}
+                                    <div class="key-term-card">
+                                        <span class="key-term-title">{{ kt.term }}</span>
+                                        <p class="key-term-def">{{ kt.definition }}</p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- 4. COMPARISON TABLE -->
+                    {% if chapter.source_data.comparisons %}
+                        <div class="cram-section">
+                            {% for comp in chapter.source_data.comparisons %}
+                                <h3 class="cram-section-title">{{ comp.title }}</h3>
+                                <div class="comparison-table-wrap">
+                                    <table class="cram-comparison-table">
+                                        <thead>
+                                            <tr>
+                                                {% for col in comp.columns %}
+                                                    <th>{{ col }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row in comp.rows %}
+                                                <tr>
+                                                    <td><strong>{{ row.criterion }}</strong></td>
+                                                    {% for val in row.values %}
+                                                        <td>{{ val }}</td>
+                                                    {% endfor %}
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- 5. TIMELINE -->
+                    {% if chapter.source_data.timeline %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Evolution & Sequence</h3>
+                            <div class="timeline-track">
+                                {% for item in chapter.source_data.timeline %}
+                                    <div class="timeline-node">
+                                        <span class="timeline-period">{{ item.period }}</span>
+                                        <div class="timeline-copy">
+                                            <strong>{{ item.title }}</strong>
+                                            <p>{{ item.description }}</p>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- 6. QUICK FACTS -->
+                    {% if chapter.source_data.quick_facts %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">High-Yield Exam Facts</h3>
+                            <ul class="cram-facts-list">
+                                {% for fact in chapter.source_data.quick_facts %}
+                                    <li>{{ fact.text|default:fact }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    <!-- 7. COMMON CONFUSIONS -->
+                    {% if chapter.source_data.common_confusions %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Common Exam Traps</h3>
+                            <div class="confusions-grid">
+                                {% for trap in chapter.source_data.common_confusions %}
+                                    <div class="confusion-card">
+                                        <div class="confusion-vs">
+                                            <span class="badge-vs">{{ trap.concept_a }}</span>
+                                            <span class="vs-divider">vs</span>
+                                            <span class="badge-vs">{{ trap.concept_b }}</span>
+                                        </div>
+                                        <p class="confusion-diff">{{ trap.difference }}</p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                {% else %}
+                    <!-- LEGACY PROSE FALLBACK -->
+                    {{ chapter.review_content|structured }}
+                {% endif %}
             </article>
         </div>
     </aside>

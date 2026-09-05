@@ -5,100 +5,155 @@
 
 {% block content %}
 <style>
-    .path-container { position: relative; margin-top: 32px; padding-left: 8px; }
+    /* Header & Action Bar */
+    .course-header-wrap {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 28px;
+    }
+    .course-header-meta h1 { margin: 0 0 6px; font-size: 1.85rem; color: var(--ink); }
+    .course-header-meta .subtitle { margin: 0; color: var(--muted); font-size: 0.96rem; max-width: 640px; line-height: 1.5; }
+    
+    .course-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .btn-action-pill {
+        display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+        border-radius: 999px; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+        border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+        transition: all 0.15s ease;
+    }
+    .btn-action-pill:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-action-pill.danger:hover { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.08); }
 
+    /* Learning Path Timeline */
+    .path-container { position: relative; margin-top: 24px; padding-left: 8px; }
     .path-node-row { position: relative; display: flex; gap: 20px; padding-bottom: 32px; }
     .path-node-row:last-child { padding-bottom: 0; }
 
     .path-node-row:not(:last-child)::before {
-        content: '';
-        position: absolute;
-        left: 23px;
-        top: 48px;
-        width: 2px;
-        height: calc(100% - 16px);
-        background: var(--border);
-        z-index: 0;
+        content: ''; position: absolute; left: 23px; top: 48px; width: 2px;
+        height: calc(100% - 16px); background: var(--border); z-index: 0;
     }
     .path-node-row.completed:not(:last-child)::before { background: var(--accent); }
 
     .path-circle {
-        position: relative;
-        z-index: 1;
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: var(--surface);
-        border: 2px solid var(--border);
-        color: var(--muted);
-        font-weight: 800;
-        font-size: 1.05rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
+        position: relative; z-index: 1; width: 48px; height: 48px; border-radius: 50%;
+        background: var(--surface); border: 2px solid var(--border); color: var(--muted);
+        font-weight: 800; font-size: 1.05rem; display: flex; align-items: center;
+        justify-content: center; flex-shrink: 0;
     }
-    .path-node-row.completed .path-circle {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #042f2e;
-    }
-    .path-node-row.active .path-circle {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: #fff;
-        box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.18);
-    }
+    .path-node-row.completed .path-circle { background: var(--accent); border-color: var(--accent); color: #042f2e; }
+    .path-node-row.active .path-circle { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.18); }
     .path-node-row.upcoming .path-circle { opacity: 0.55; }
 
     .path-node-card {
-        flex: 1;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 18px 20px;
+        flex: 1; background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 18px 20px;
     }
     .path-node-row.upcoming .path-node-card { opacity: 0.6; }
-    .path-node-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+
+    .node-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+    .path-node-card h3 { margin: 0; font-size: 1.08rem; color: var(--ink); }
+
+    .btn-edit-inline {
+        background: transparent; border: none; padding: 2px 6px; font-size: 0.85rem;
+        cursor: pointer; color: var(--muted); border-radius: 6px; transition: color 0.15s ease;
+    }
+    .btn-edit-inline:hover { color: var(--primary); }
+
     .path-node-status {
-        font-size: 0.78rem;
-        font-weight: 700;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
+        font-size: 0.76rem; font-weight: 800; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
     }
     .path-node-row.completed .path-node-status { color: var(--accent); }
     .path-node-row.active .path-node-status { color: var(--primary); }
 
     .path-node-actions { display: flex; gap: 10px; margin-top: 14px; }
     .path-pill-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 16px;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        font-weight: 700;
-        text-decoration: none;
-        border: 1px solid var(--border);
-        background: var(--bg);
-        color: var(--ink);
+        display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+        border-radius: 999px; font-size: 0.85rem; font-weight: 700; text-decoration: none;
+        border: 1px solid var(--border); background: var(--bg); color: var(--ink);
         transition: all 0.15s ease;
     }
     .path-pill-btn:hover { border-color: var(--primary); color: var(--primary); }
-    .path-pill-btn.pill-accent {
-        background: rgba(0, 194, 168, 0.12);
-        border-color: rgba(0, 194, 168, 0.3);
-        color: #007a68;
+    .path-pill-btn.pill-accent { background: rgba(0, 194, 168, 0.12); border-color: rgba(0, 194, 168, 0.3); color: #007a68; }
+
+    /* Modal System */
+    .sq-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(4px); z-index: 1050; display: none;
+        align-items: center; justify-content: center; padding: 20px;
     }
+    .sq-modal-backdrop.open { display: flex; animation: modalFadeIn 0.2s ease; }
+    @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .sq-modal-box {
+        width: 100%; max-width: 480px; background: var(--surface);
+        border: 1px solid var(--border); border-radius: 18px; padding: 26px;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.35); animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalPop { from { transform: scale(0.95) translateY(10px); } to { transform: scale(1) translateY(0); } }
+
+    .sq-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .sq-modal-header h3 { margin: 0; font-size: 1.25rem; color: var(--ink); }
+    .sq-modal-close { background: transparent; border: none; font-size: 1.25rem; color: var(--muted); cursor: pointer; }
+    .sq-modal-close:hover { color: var(--danger); }
+
+    .sq-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .sq-form-group label { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+    .sq-form-group input, .sq-form-group textarea {
+        padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border);
+        background: var(--bg); color: var(--ink); font-family: inherit; font-size: 0.95rem;
+    }
+    .sq-form-group input:focus, .sq-form-group textarea:focus { outline: none; border-color: var(--primary); }
+
+    .sq-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+    .course-failed-box {
+        max-width: 540px;
+        margin: 40px auto 0;
+        padding: 36px 28px;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        background: var(--surface);
+        text-align: center;
+    }
+    .failed-badge {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 16px;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.14);
+        color: var(--danger);
+        font-size: 1.4rem;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+    }
+    .course-failed-box h3 { margin: 0 0 8px; font-size: 1.25rem; color: var(--ink); }
+    .course-failed-box p { margin: 0 0 24px; font-size: 0.94rem; color: var(--muted); line-height: 1.6; }
+    .failed-actions { display: flex; justify-content: center; gap: 12px; }
+    @media (max-width: 500px) { .failed-actions { flex-direction: column; } }
+
 </style>
 
-<div class="page-header">
-    <div>
+<div class="course-header-wrap">
+    <div class="course-header-meta">
+        <a href="{% url 'courses:course_list' %}" class="btn btn-ghost" style="padding-left: 0; margin-bottom: 8px;">&larr; Quest Library</a>
         <h1>{{ course.title }}</h1>
-        <p class="subtitle">{{ course.description }}</p>
+        <p class="subtitle">{{ course.description|default:"No description provided." }}</p>
     </div>
-    <a class="btn btn-ghost" href="{% url 'courses:course_list' %}">&larr; All courses</a>
+    
+    <!-- Course Actions: Edit & Delete -->
+    <div class="course-header-actions">
+        <button type="button" class="btn-action-pill" id="open-edit-course-btn" title="Edit course details">
+            <span>✏️</span> Edit
+        </button>
+        <button type="button" class="btn-action-pill danger" id="open-delete-course-btn" title="Delete course">
+            <span>🗑️</span> Delete
+        </button>
+    </div>
 </div>
 
 <h2>Learning Path</h2>
@@ -116,7 +171,15 @@
                         {% elif chapter.progress_status == 'active' %}In Progress
                         {% else %}Not Started{% endif %}
                     </div>
-                    <h3>{{ chapter.title }}</h3>
+                    <div class="node-header-row">
+                        <h3>{{ chapter.title }}</h3>
+                        <button type="button" class="btn-edit-inline rename-chapter-trigger"
+                                data-chapter-id="{{ chapter.pk }}"
+                                data-chapter-title="{{ chapter.title }}"
+                                title="Rename lesson">
+                            ✏️
+                        </button>
+                    </div>
                     <div class="path-node-actions">
                         <a class="btn btn-primary" style="padding:8px 16px; border-radius:999px; font-size:0.85rem;" href="{% url 'courses:chapter_review' chapter.pk %}">📖 Review Lesson</a>
                         {% if chapter.quiz %}
@@ -128,6 +191,146 @@
         {% endfor %}
     </div>
 {% else %}
-    <p class="empty-state">No chapters generated yet.</p>
+    <section class="course-failed-box">
+        <div class="failed-badge">!</div>
+        <h3>Course Generation Interrupted</h3>
+        <p>
+            StudyQuest was unable to generate chapters from the uploaded material. 
+            No lessons were saved for this course draft.
+        </p>
+        <div class="failed-actions">
+            <a href="{% url 'courses:course_create' %}" class="btn btn-primary btn-chunky">
+                Restart Upload &rarr;
+            </a>
+            <button type="button" class="btn btn-secondary" id="open-empty-delete-btn">
+                Delete Draft
+            </button>
+        </div>
+    </section>
 {% endif %}
+
+<!-- 1. EDIT COURSE MODAL -->
+<div class="sq-modal-backdrop" id="edit-course-modal">
+    <div class="sq-modal-box">
+        <div class="sq-modal-header">
+            <h3>Edit Course</h3>
+            <button type="button" class="sq-modal-close" data-close-modal="edit-course-modal">✕</button>
+        </div>
+        <form method="POST" action="{% url 'courses:course_edit' course.pk %}">
+            {% csrf_token %}
+            <div class="sq-form-group">
+                <label for="course-title">Title</label>
+                <input type="text" id="course-title" name="title" value="{{ course.title }}" required>
+            </div>
+            <div class="sq-form-group">
+                <label for="course-desc">Description</label>
+                <textarea id="course-desc" name="description" rows="3">{{ course.description }}</textarea>
+            </div>
+            <div class="sq-modal-actions">
+                <button type="button" class="btn btn-secondary" data-close-modal="edit-course-modal">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-chunky">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. DELETE COURSE MODAL -->
+<div class="sq-modal-backdrop" id="delete-course-modal">
+    <div class="sq-modal-box">
+        <div class="sq-modal-header">
+            <h3 style="color: var(--danger);">Delete Course</h3>
+            <button type="button" class="sq-modal-close" data-close-modal="delete-course-modal">✕</button>
+        </div>
+        <p style="color: var(--muted); font-size: 0.95rem; line-height: 1.5; margin: 0 0 20px;">
+            Are you sure you want to delete <strong>{{ course.title }}</strong>? All generated chapters, study materials, and saved quiz results will be permanently removed.
+        </p>
+        <form method="POST" action="{% url 'courses:course_delete' course.pk %}">
+            {% csrf_token %}
+            <div class="sq-modal-actions">
+                <button type="button" class="btn btn-secondary" data-close-modal="delete-course-modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);">Delete Course</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 3. RENAME CHAPTER MODAL -->
+<div class="sq-modal-backdrop" id="rename-chapter-modal">
+    <div class="sq-modal-box">
+        <div class="sq-modal-header">
+            <h3>Rename Chapter</h3>
+            <button type="button" class="sq-modal-close" data-close-modal="rename-chapter-modal">✕</button>
+        </div>
+        <form method="POST" id="rename-chapter-form" action="">
+            {% csrf_token %}
+            <div class="sq-form-group">
+                <label for="chapter-title-input">Chapter Title</label>
+                <input type="text" id="chapter-title-input" name="title" required>
+            </div>
+            <div class="sq-modal-actions">
+                <button type="button" class="btn btn-secondary" data-close-modal="rename-chapter-modal">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-chunky">Save Title</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Open Modals
+    const editCourseModal = document.getElementById('edit-course-modal');
+    const deleteCourseModal = document.getElementById('delete-course-modal');
+    const renameChapterModal = document.getElementById('rename-chapter-modal');
+
+    document.getElementById('open-edit-course-btn')?.addEventListener('click', () => {
+        editCourseModal.classList.add('open');
+    });
+
+    document.getElementById('open-delete-course-btn')?.addEventListener('click', () => {
+        deleteCourseModal.classList.add('open');
+    });
+
+    // Dynamic Chapter Rename Binding
+    const renameForm = document.getElementById('rename-chapter-form');
+    const renameInput = document.getElementById('chapter-title-input');
+
+    document.querySelectorAll('.rename-chapter-trigger').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const chId = btn.dataset.chapterId;
+            const chTitle = btn.dataset.chapterTitle;
+            renameForm.action = `/chapters/${chId}/rename/`;
+            renameInput.value = chTitle;
+            renameChapterModal.classList.add('open');
+            renameInput.focus();
+        });
+    });
+
+    // Close Handlers
+    document.querySelectorAll('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.dataset.closeModal;
+            document.getElementById(targetId)?.classList.remove('open');
+        });
+    });
+
+    // Click outside backdrop to close
+    document.querySelectorAll('.sq-modal-backdrop').forEach(backdrop => {
+        backdrop.addEventListener('click', (e) => {
+            if (e.target === backdrop) backdrop.classList.remove('open');
+        });
+    });
+
+    // ESC to close
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.sq-modal-backdrop.open').forEach(m => m.classList.remove('open'));
+        }
+    });
+});
+
+    document.getElementById('open-empty-delete-btn')?.addEventListener('click', () => {
+    document.getElementById('delete-course-modal')?.classList.add('open');
+});
+
+</script>
 {% endblock %}

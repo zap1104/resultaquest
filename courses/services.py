@@ -94,18 +94,26 @@ def _get_curriculum_prompt(course_title):
     Each chapter must contain:
     1. A concise, structured "review_content" study guide (2-4 paragraphs).
     2. A 3-to-5 question multiple-choice "quiz" testing comprehension.
-    3. Each question must have 4 choices with exactly one "is_correct": true.
+    3. Each question must have 4 choices with exactly one "is_correct": true, and an educational "explanation".
 
     Output MUST adhere strictly to this JSON structure:
     {{
+      "course": {{
+        "title": "{course_title}",
+        "description": "Comprehensive course curriculum generated from source materials."
+      }},
       "chapters": [
         {{
+          "order": 1,
           "title": "Chapter Title",
           "review_content": "Detailed educational summary...",
           "quiz": {{
+            "title": "Chapter Quiz",
             "questions": [
               {{
+                "order": 1,
                 "text": "Question text here?",
+                "explanation": "Clear explanation defining the concept and why this answer is correct.",
                 "choices": [
                   {{"text": "Choice A", "is_correct": false}},
                   {{"text": "Choice B", "is_correct": true}},
