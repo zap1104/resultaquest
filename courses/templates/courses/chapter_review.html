@@ -184,6 +184,89 @@
     @media (prefers-reduced-motion: reduce) {
         .review-workspace, .lesson-hub-pane, .lesson-reader-pane, .lesson-completed-chip { transition: none !important; }
     }
+
+    .section-block {
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--border);
+    }
+    .section-heading {
+        font-size: 1.22rem;
+        font-weight: 800;
+        color: var(--ink);
+        margin: 0 0 8px;
+    }
+    .section-intro {
+        font-size: 0.95rem;
+        color: var(--muted);
+        line-height: 1.55;
+        margin: 0 0 16px;
+    }
+
+    .concept-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin-bottom: 14px;
+    }
+    .concept-term {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--accent);
+    }
+    .concept-formal {
+        margin: 6px 0 8px;
+        font-size: 0.92rem;
+        line-height: 1.5;
+        color: var(--ink);
+    }
+    .concept-simple {
+        background: rgba(108, 92, 231, 0.07);
+        border-left: 3px solid var(--primary);
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.88rem;
+        line-height: 1.45;
+        margin-bottom: 8px;
+    }
+    .concept-analogy {
+        font-size: 0.86rem;
+        color: var(--muted);
+    }
+
+    .enum-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin-bottom: 12px;
+    }
+    .enum-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+    .enum-cue {
+        font-size: 0.75rem;
+        font-weight: 800;
+        background: rgba(0, 194, 168, 0.12);
+        color: var(--accent);
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+    .enum-prompt {
+        font-size: 0.88rem;
+        color: var(--muted);
+        margin: 0 0 10px;
+    }
+    .enum-items {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 0.92rem;
+        line-height: 1.55;
+    }
+
 </style>
 
 <div class="review-workspace" id="review-workspace">
@@ -283,45 +366,67 @@
 
         <div class="reader-content" id="reader-content" tabindex="0">
             <article class="reader-content-inner">
-                <!-- D-3 Dual-Mode Structured Content -->
-                {% if chapter.source_data.overview %}
-                    <!-- 1. CORE TAKEAWAY -->
+                {% if chapter.source_data.sections %}
+                    <!-- Header & Focus -->
                     <div class="cram-overview-card">
-                        <span class="cram-badge">Core Takeaway</span>
-                        <p class="cram-lead">{{ chapter.source_data.overview }}</p>
+                        <span class="cram-badge">{{ chapter.source_data.week_label|default:"Chapter Focus" }}</span>
+                        <p class="cram-lead">{{ chapter.source_data.focus }}</p>
                     </div>
 
-                    <!-- 2. ANALOGY / MENTAL HOOK -->
-                    {% if chapter.source_data.analogy %}
-                        <div class="analogy-callout">
-                            <span class="analogy-icon">💡</span>
-                            <div>
-                                <strong>Think of it like: {{ chapter.source_data.analogy.label }}</strong>
-                                <p>{{ chapter.source_data.analogy.explanation }}</p>
-                            </div>
-                        </div>
-                    {% endif %}
-
-                    <!-- 3. KEY TERMS GRID -->
-                    {% if chapter.source_data.key_terms %}
+                    <!-- Learning Objectives -->
+                    {% if chapter.source_data.learning_objectives %}
                         <div class="cram-section">
-                            <h3 class="cram-section-title">Key Terms & Definitions</h3>
-                            <div class="key-terms-grid">
-                                {% for kt in chapter.source_data.key_terms %}
-                                    <div class="key-term-card">
-                                        <span class="key-term-title">{{ kt.term }}</span>
-                                        <p class="key-term-def">{{ kt.definition }}</p>
-                                    </div>
+                            <h3 class="cram-section-title">🎯 Learning Objectives</h3>
+                            <ul class="cram-facts-list">
+                                {% for obj in chapter.source_data.learning_objectives %}
+                                    <li>{{ obj }}</li>
                                 {% endfor %}
-                            </div>
+                            </ul>
                         </div>
                     {% endif %}
 
-                    <!-- 4. COMPARISON TABLE -->
+                    <!-- Numbered Sections Flow -->
+                    {% for section in chapter.source_data.sections %}
+                        <div class="cram-section section-block">
+                            <h3 class="section-heading">{{ forloop.counter }}. {{ section.title }}</h3>
+                            {% if section.introduction %}
+                                <p class="section-intro">{{ section.introduction }}</p>
+                            {% endif %}
+
+                            <!-- Section Concepts -->
+                            {% for concept in section.concepts %}
+                                <div class="concept-card">
+                                    <div class="concept-header">
+                                        <span class="concept-term">{{ concept.term }}</span>
+                                    </div>
+                                    <p class="concept-formal"><strong>Definition:</strong> {{ concept.formal_definition }}</p>
+                                    <div class="concept-simple">
+                                        <strong>In Simple Words:</strong> {{ concept.simple_explanation }}
+                                    </div>
+                                    {% if concept.analogy %}
+                                        <div class="concept-analogy">
+                                            💡 <strong>Analogy:</strong> {{ concept.analogy }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+
+                            <!-- Section Key Points -->
+                            {% if section.key_points %}
+                                <ul class="cram-facts-list" style="margin-top: 14px;">
+                                    {% for pt in section.key_points %}
+                                        <li>{{ pt }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+
+                    <!-- Comparison Matrices -->
                     {% if chapter.source_data.comparisons %}
-                        <div class="cram-section">
-                            {% for comp in chapter.source_data.comparisons %}
-                                <h3 class="cram-section-title">{{ comp.title }}</h3>
+                        {% for comp in chapter.source_data.comparisons %}
+                            <div class="cram-section">
+                                <h3 class="cram-section-title">⚖️ {{ comp.title }}</h3>
                                 <div class="comparison-table-wrap">
                                     <table class="cram-comparison-table">
                                         <thead>
@@ -343,44 +448,37 @@
                                         </tbody>
                                     </table>
                                 </div>
-                            {% endfor %}
-                        </div>
+                            </div>
+                        {% endfor %}
                     {% endif %}
 
-                    <!-- 5. TIMELINE -->
-                    {% if chapter.source_data.timeline %}
+                    <!-- Enumerations -->
+                    {% if chapter.source_data.enumerations %}
                         <div class="cram-section">
-                            <h3 class="cram-section-title">Evolution & Sequence</h3>
-                            <div class="timeline-track">
-                                {% for item in chapter.source_data.timeline %}
-                                    <div class="timeline-node">
-                                        <span class="timeline-period">{{ item.period }}</span>
-                                        <div class="timeline-copy">
-                                            <strong>{{ item.title }}</strong>
-                                            <p>{{ item.description }}</p>
+                            <h3 class="cram-section-title">📋 High-Yield Enumerations</h3>
+                            <div class="enum-grid">
+                                {% for enum in chapter.source_data.enumerations %}
+                                    <div class="enum-card">
+                                        <div class="enum-header">
+                                            <strong>{{ enum.title }}</strong>
+                                            {% if enum.memory_cue %}<span class="enum-cue">{{ enum.memory_cue }}</span>{% endif %}
                                         </div>
+                                        <p class="enum-prompt">{{ enum.prompt }}</p>
+                                        <ol class="enum-items">
+                                            {% for it in enum.items %}
+                                                <li>{{ it }}</li>
+                                            {% endfor %}
+                                        </ol>
                                     </div>
                                 {% endfor %}
                             </div>
                         </div>
                     {% endif %}
 
-                    <!-- 6. QUICK FACTS -->
-                    {% if chapter.source_data.quick_facts %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">High-Yield Exam Facts</h3>
-                            <ul class="cram-facts-list">
-                                {% for fact in chapter.source_data.quick_facts %}
-                                    <li>{{ fact.text|default:fact }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    {% endif %}
-
-                    <!-- 7. COMMON CONFUSIONS -->
+                    <!-- Common Confusions / Traps -->
                     {% if chapter.source_data.common_confusions %}
                         <div class="cram-section">
-                            <h3 class="cram-section-title">Common Exam Traps</h3>
+                            <h3 class="cram-section-title">⚠️ Common Exam Traps</h3>
                             <div class="confusions-grid">
                                 {% for trap in chapter.source_data.common_confusions %}
                                     <div class="confusion-card">
@@ -396,9 +494,21 @@
                         </div>
                     {% endif %}
 
+                    <!-- Key Takeaways -->
+                    {% if chapter.source_data.key_takeaways %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">📌 Key Takeaways</h3>
+                            <ul class="cram-facts-list">
+                                {% for take in chapter.source_data.key_takeaways %}
+                                    <li>{{ take }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
                 {% else %}
-                    <!-- LEGACY PROSE FALLBACK -->
-                    {{ chapter.review_content|structured }}
+                    <!-- Legacy Fallback -->
+                    {{ chapter.review_content|linebreaks }}
                 {% endif %}
             </article>
         </div>

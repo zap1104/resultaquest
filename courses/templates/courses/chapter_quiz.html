@@ -20,11 +20,22 @@
     /* Tags & Title */
     .quiz-tag-row { display: flex; justify-content: center; gap: 8px; margin: 24px 20px 0; }
     .quiz-tag { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); color: var(--muted); }
+    .quiz-tag.tag-type { color: var(--accent); border-color: rgba(0, 194, 168, 0.25); background: rgba(0, 194, 168, 0.08); }
 
     .quiz-question-text { font-size: 1.35rem; font-weight: 800; margin: 18px 20px 24px; line-height: 1.4; text-align: center; color: var(--ink); }
 
     /* Answer Choices */
     .quiz-choices { display: flex; flex-direction: column; gap: 12px; padding: 0 20px; }
+    
+    /* Dedicated 2-Column Layout for True/False */
+    .quiz-choices.tf-layout {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+    @media (max-width: 520px) {
+        .quiz-choices.tf-layout { grid-template-columns: 1fr; }
+    }
 
     .quiz-option {
         display: flex; align-items: center; gap: 14px; min-height: 68px; padding: 14px 18px;
@@ -127,7 +138,7 @@
         </div>
     </div>
 
-    <!-- EMBEDDED QUIZ DATA -->
+    <!-- EMBEDDED QUIZ DATA WITH QUESTION TYPE -->
     <script id="quiz-data" type="application/json">
         {
             "chapterId": {{ chapter.pk }},
@@ -136,6 +147,7 @@
                 {% for q in quiz.questions.all %}
                 {
                     "id": {{ q.id }},
+                    "type": "{{ q.question_type|default:'multiple_choice' }}",
                     "text": "{{ q.text|escapejs }}",
                     "explanation": "{{ q.explanation|default:''|escapejs }}",
                     "choices": [
@@ -178,6 +190,8 @@
             isCurrentGraded = false;
             const q = quiz.questions[currentIndex];
             const isLast = currentIndex === quiz.questions.length - 1;
+            const isTF = q.type === 'true_false';
+            const typeLabel = isTF ? 'True or False' : 'Multiple Choice';
 
             const pct = Math.round((currentIndex / quiz.questions.length) * 100);
             progressFill.style.width = `${pct}%`;
@@ -186,16 +200,23 @@
             wrap.innerHTML = `
                 <div class="quiz-tag-row">
                     <span class="quiz-tag">Question ${currentIndex + 1}</span>
-                    <span class="quiz-tag">Multiple Choice</span>
+                    <span class="quiz-tag tag-type">${typeLabel}</span>
                 </div>
                 <div class="quiz-question-text">${q.text}</div>
-                <div class="quiz-choices" id="choices-container">
-                    ${q.choices.map((c, i) => `
-                        <button type="button" class="quiz-option ${selectedAnswers[q.id] === c.id ? 'selected' : ''}" data-choice-id="${c.id}">
-                            <span class="quiz-letter">${letters[i] || ''}</span>
-                            <span>${c.text}</span>
-                        </button>
-                    `).join('')}
+                <div class="quiz-choices ${isTF ? 'tf-layout' : ''}" id="choices-container">
+                    ${q.choices.map((c, i) => {
+                        let letterBadge = letters[i] || '';
+                        if (isTF) {
+                            const normalized = c.text.trim().toLowerCase();
+                            letterBadge = normalized.startsWith('t') ? 'T' : 'F';
+                        }
+                        return `
+                            <button type="button" class="quiz-option ${selectedAnswers[q.id] === c.id ? 'selected' : ''}" data-choice-id="${c.id}">
+                                <span class="quiz-letter">${letterBadge}</span>
+                                <span>${c.text}</span>
+                            </button>
+                        `;
+                    }).join('')}
                 </div>
                 <div id="feedback-mount"></div>
                 <button type="button" id="action-btn" class="btn btn-primary btn-chunky quiz-action-btn" ${selectedAnswers[q.id] ? '' : 'disabled'}>
