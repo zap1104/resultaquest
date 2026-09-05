@@ -2,8 +2,11 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
+from datetime import timedelta
 
-# --- SPRINT A & B: GAMIFICATION PROFILE & LEDGER ---
+
+# --- SPRINT A & B & C: GAMIFICATION PROFILE & LEDGER ---
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -24,54 +27,59 @@ class UserProfile(models.Model):
             xp_for_next_level = self.current_level * 100
         self.save(update_fields=['total_xp', 'current_level'])
 
+    def update_streak(self):
+        """Calculates and updates the user's daily study streak.
+        Call this (or record_study_activity, once other activity types
+        exist) any time a genuine study action happens — currently
+        wired to quiz submission only.
+        """
+        today = timezone.now().date()
+
+        if self.last_study_date == today:
+            return  # Already counted today, no double-increment
+        elif self.last_study_date == today - timedelta(days=1):
+            self.streak_days += 1  # Sequential day, increment streak
+        else:
+            self.streak_days = 1  # Missed a day (or first time), reset to 1
+
+        self.last_study_date = today
+        self.save(update_fields=['streak_days', 'last_study_date'])
+
+    def record_study_activity(self):
+        """Single entry point for 'the user did something study-related
+        today'. Currently just calls update_streak(); once review
+        sessions / flashcards exist, route those through here too so
+        streak logic stays in one place.
+        """
+        self.update_streak()
+
     def __str__(self):
         return f"{self.user.username} - Lv. {self.current_level} ({self.total_xp} XP)"
+
 
 @receiver(post_save, sender=User)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
 
-class XPTransaction(models.Model):
-    """An audit-trail entry for every XP award."""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='xp_transactions')
-    amount = models.IntegerField()
-    reason = models.CharField(max_length=200)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f'{self.user.username}: {self.amount:+d} XP ({self.reason})'
-
-class QuizAttempt(models.Model):
-    """One completed run of a Quiz by a User. Scored server-side."""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_attempts')
-    quiz = models.ForeignKey('Quiz', on_delete=models.CASCADE, related_name='attempts')
-    score = models.PositiveIntegerField()
-    total_questions = models.PositiveIntegerField()
-    xp_earned = models.PositiveIntegerField(default=0)
-    completed_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-completed_at']
-
-    def __str__(self):
-        return f'{self.user.username} — {self.quiz} ({self.score}/{self.total_questions})'
-
 
 # --- EXISTING MODELS ---
 
 class Course(models.Model):
+    """A subject/course the learner wants a personalized review journey for."""
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='courses')
+
     title = models.CharField(max_length=200)
     description = models.CharField(max_length=300, blank=True)
+
     syllabus_text = models.TextField(blank=True)
     modules_text = models.TextField(blank=True)
     activities_text = models.TextField(blank=True)
     assignments_text = models.TextField(blank=True)
+
     structured_content = models.JSONField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -81,11 +89,17 @@ class Course(models.Model):
     def __str__(self):
         return self.title
 
+
 class Chapter(models.Model):
+    """One step in a course's learning path (a NetAcad-style review unit)."""
+
     course = models.ForeignKey(Course, related_name='chapters', on_delete=models.CASCADE)
     order = models.PositiveIntegerField(default=1)
     title = models.CharField(max_length=200)
-    review_content = models.TextField(blank=True)
+    review_content = models.TextField(
+        blank=True,
+        help_text='Personalized review text for this chapter, generated from the raw materials.',
+    )
     source_data = models.JSONField(blank=True, null=True)
 
     class Meta:
@@ -94,12 +108,16 @@ class Chapter(models.Model):
     def __str__(self):
         return f'{self.course.title} — {self.title}'
 
+
 class Quiz(models.Model):
+    """The knowledge-check at the end of a chapter."""
+
     chapter = models.OneToOneField(Chapter, related_name='quiz', on_delete=models.CASCADE)
     title = models.CharField(max_length=200, blank=True)
 
     def __str__(self):
         return self.title or f'Quiz for {self.chapter.title}'
+
 
 class Question(models.Model):
     quiz = models.ForeignKey(Quiz, related_name='questions', on_delete=models.CASCADE)
@@ -112,6 +130,7 @@ class Question(models.Model):
     def __str__(self):
         return self.text
 
+
 class Choice(models.Model):
     question = models.ForeignKey(Question, related_name='choices', on_delete=models.CASCADE)
     text = models.CharField(max_length=300)
@@ -119,3 +138,40 @@ class Choice(models.Model):
 
     def __str__(self):
         return self.text
+
+
+# --- SPRINT B: QUIZ PERSISTENCE & XP LEDGER ---
+
+class XPTransaction(models.Model):
+    """An audit-trail entry for every XP award. UserProfile.total_xp is a
+    cached sum of these — never edit total_xp directly, always go through
+    UserProfile.award_xp() so the ledger and the cached total can't drift.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='xp_transactions')
+    amount = models.IntegerField()
+    reason = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username}: {self.amount:+d} XP ({self.reason})'
+
+
+class QuizAttempt(models.Model):
+    """One completed run of a Quiz by a User. Scoring happens server-side
+    in views.submit_quiz — this row is the permanent record of that result.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_attempts')
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='attempts')
+    score = models.PositiveIntegerField()
+    total_questions = models.PositiveIntegerField()
+    xp_earned = models.PositiveIntegerField(default=0)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-completed_at']
+
+    def __str__(self):
+        return f'{self.user.username} — {self.quiz} ({self.score}/{self.total_questions})'
