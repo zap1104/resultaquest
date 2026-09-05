@@ -6,7 +6,110 @@
 
 {% block content %}
 <style>
-    /* Robust Loader Overlay */
+    /* Ensure page container spans 100% width so centering is true viewport-center */
+    .forge-page-wrap,
+    .page.forge-page-wrap {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Outer Stage: centers children horizontally */
+    .forge-stage {
+        position: relative;
+        width: 100%;
+        min-height: calc(100vh - 120px);
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 32px 24px 80px;
+        box-sizing: border-box;
+    }
+
+    /* Dead-Centered Form Hub */
+    .forge-center-hub {
+        position: relative; /* Anchor for the left-flanking mascot */
+        width: 100%;
+        max-width: 680px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* Mascot Anchor: Shifted outward, pushed downward, and scaled up to match hub height */
+    .forge-mascot-flank {
+        position: absolute;
+        right: calc(100% + 48px); /* Shifted further left */
+        top: 64px;                /* Shifted down along the arrow */
+        width: 380px;             /* Expanded width to match new proportions */
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .forge-mascot-img {
+        width: 100%;
+        height: auto;
+        max-height: 720px;        /* Matches the height of the entire form hub */
+        object-fit: contain;
+        display: block;
+        user-select: none;
+        pointer-events: none;
+        /* Contour silhouette aura */
+        filter: 
+            drop-shadow(0 0 8px rgba(0, 194, 168, 0.55))
+            drop-shadow(0 0 20px rgba(0, 194, 168, 0.32))
+            drop-shadow(0 0 42px rgba(108, 92, 231, 0.28))
+            drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+    }
+
+    .forge-header-group {
+        text-align: left;
+        margin-bottom: 4px;
+    }
+    .forge-header-group .hero-greeting { margin: 6px 0 4px; font-size: 1.85rem; font-weight: 900; }
+    .forge-header-group .subtitle { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    /* Configuration Fields */
+    .forge-config-group { margin-top: 20px; text-align: left; }
+    .forge-label { display: block; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
+    .forge-input {
+        width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border);
+        background: var(--surface); color: var(--ink); font-family: inherit; font-size: 0.95rem;
+        box-sizing: border-box; transition: border-color 0.15s ease;
+    }
+    .forge-input:focus { outline: none; border-color: var(--primary); }
+
+    /* Pill Selection Grid */
+    .option-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .option-grid.tri { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 640px) { .option-grid, .option-grid.tri { grid-template-columns: 1fr; } }
+
+    .option-card {
+        position: relative; border: 2px solid var(--border); border-radius: 14px;
+        background: var(--surface); padding: 14px; cursor: pointer;
+        transition: all 0.15s ease; display: flex; flex-direction: column; gap: 4px;
+    }
+    .option-card:hover { border-color: var(--primary); }
+    .option-card input { position: absolute; opacity: 0; pointer-events: none; }
+    .option-card.selected {
+        border-color: var(--primary); background: rgba(108, 92, 231, 0.08);
+        box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+    }
+    .option-title { font-size: 0.92rem; font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+    .option-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
+
+    .generation-alert {
+        display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+        border-radius: 14px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    /* Modal Loader */
     .forge-loader-backdrop {
         position: fixed; inset: 0; background: rgba(10, 14, 26, 0.88);
         backdrop-filter: blur(10px); z-index: 9999;
@@ -46,138 +149,134 @@
         100% { left: 100%; }
     }
 
-    /* Configuration Fields */
-    .forge-config-group { margin-top: 24px; text-align: left; }
-    .forge-label { display: block; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
-    .forge-input {
-        width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border);
-        background: var(--surface); color: var(--ink); font-family: inherit; font-size: 0.95rem;
-        box-sizing: border-box; transition: border-color 0.15s ease;
+/* Adjusted Breakpoints for the Larger Silhouette */
+    @media (max-width: 1440px) {
+        .forge-mascot-flank {
+            width: 320px;
+            right: calc(100% + 24px);
+            top: 70px;
+        }
+        .forge-mascot-img {
+            max-height: 620px;
+        }
     }
-    .forge-input:focus { outline: none; border-color: var(--primary); }
-
-    /* Pill Selection Grid */
-    .option-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .option-grid.tri { grid-template-columns: repeat(3, 1fr); }
-    @media (max-width: 600px) { .option-grid, .option-grid.tri { grid-template-columns: 1fr; } }
-
-    .option-card {
-        position: relative; border: 2px solid var(--border); border-radius: 14px;
-        background: var(--surface); padding: 14px; cursor: pointer;
-        transition: all 0.15s ease; display: flex; flex-direction: column; gap: 4px;
-    }
-    .option-card:hover { border-color: var(--primary); }
-    .option-card input { position: absolute; opacity: 0; pointer-events: none; }
-    .option-card.selected {
-        border-color: var(--primary); background: rgba(108, 92, 231, 0.08);
-        box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
-    }
-    .option-title { font-size: 0.92rem; font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 6px; }
-    .option-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
-
-    .generation-alert {
-        display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin-bottom: 24px;
-        border-radius: 14px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);
+    @media (max-width: 1140px) {
+        .forge-mascot-flank {
+            display: none; /* Hide on smaller viewports so the form stays centered */
+        }
+        .forge-header-group {
+            text-align: center;
+        }
     }
 </style>
 
-{% if generation_failed %}
-    <div class="generation-alert" role="alert">
-        <div style="font-size: 1.5rem;">⚠️</div>
-        <div style="flex: 1;">
-            <strong style="color: var(--danger); font-size: 0.95rem;">Generation Interrupted</strong>
-            <p style="margin: 0; font-size: 0.88rem; color: var(--muted);">Could not synthesize curriculum from <em>{{ previous_filename }}</em>. The incomplete draft was discarded automatically.</p>
+<div class="forge-stage">
+    <!-- TRUE CENTERED FORM HUB -->
+    <main class="forge-center-hub">
+        <!-- MASCOT ANCHORED OFF THE LEFT EDGE -->
+        <aside class="forge-mascot-flank" aria-hidden="true">
+            <img src="{% static 'courses/images/mascot_point.png' %}" 
+                 alt="" 
+                 class="forge-mascot-img">
+        </aside>
+
+        <div class="forge-header-group">
+            <span class="section-tag">⚡ STUDYQUEST</span>
+            <h1 class="hero-greeting">Create a New Course</h1>
+            <p class="subtitle">Upload your syllabus or lecture notes and let AI build a tailored study guide.</p>
         </div>
-        <button type="button" class="btn btn-primary" id="retry-picker-btn">Choose Another File</button>
-    </div>
-{% endif %}
 
-<div class="forge-container">
-    <div class="forge-header text-center">
-        <span class="section-tag">⚡ STUDYQUEST</span>
-        <h1 class="hero-greeting">Create a New Course</h1>
-        <p class="subtitle">Upload your syllabus or lecture notes and let AI build a tailored study guide.</p>
-    </div>
+        {% if generation_failed %}
+            <div class="generation-alert" role="alert">
+                <div style="font-size: 1.5rem;">⚠️</div>
+                <div style="flex: 1;">
+                    <strong style="color: var(--danger); font-size: 0.95rem;">Generation Interrupted</strong>
+                    <p style="margin: 0; font-size: 0.88rem; color: var(--muted);">Could not synthesize curriculum from <em>{{ previous_filename }}</em>. The incomplete draft was discarded automatically.</p>
+                </div>
+                <button type="button" class="btn btn-primary" id="retry-picker-btn">Choose Another File</button>
+            </div>
+        {% endif %}
 
-    <form method="post" enctype="multipart/form-data" class="forge-form" id="course-form">
-        {% csrf_token %}
-        
-        <!-- File Drop Zone -->
-        <div class="card drop-zone" id="drop-zone">
-            <div id="drop-empty-state">
-                <div class="upload-icon-wrap"><span class="upload-icon">📄</span></div>
-                <h2 class="drop-title">Drag & Drop Study Materials</h2>
-                <p class="drop-subtitle">or <label for="file-upload" class="browse-link">Browse Files</label></p>
+        <form method="post" enctype="multipart/form-data" class="forge-form" id="course-form">
+            {% csrf_token %}
+            
+            <!-- File Drop Zone -->
+            <div class="card drop-zone" id="drop-zone">
+                <div id="drop-empty-state">
+                    <div class="upload-icon-wrap"><span class="upload-icon">📄</span></div>
+                    <h2 class="drop-title">Drag & Drop Study Materials</h2>
+                    <p class="drop-subtitle">or <label for="file-upload" class="browse-link">Browse Files</label></p>
+                </div>
+
+                <div id="drop-selected-state" class="hidden">
+                    <div class="upload-icon-wrap success-pulse"><span class="upload-icon">✅</span></div>
+                    <h2 class="drop-title text-accent">Material Ready</h2>
+                    <div class="file-preview-card">
+                        <span class="file-preview-icon">📝</span>
+                        <div class="file-details">
+                            <span class="file-name" id="file-name">filename.pdf</span>
+                            <span class="file-size" id="file-size">1.8 MB</span>
+                        </div>
+                        <button type="button" class="remove-btn" id="remove-file" title="Remove file">✕</button>
+                    </div>
+                </div>
+                <input type="file" id="file-upload" name="content_file" class="hidden-file-input" accept=".pdf,.docx,.txt" required>
             </div>
 
-            <div id="drop-selected-state" class="hidden">
-                <div class="upload-icon-wrap success-pulse"><span class="upload-icon">✅</span></div>
-                <h2 class="drop-title text-accent">Material Ready</h2>
-                <div class="file-preview-card">
-                    <span class="file-preview-icon">📝</span>
-                    <div class="file-details">
-                        <span class="file-name" id="file-name">filename.pdf</span>
-                        <span class="file-size" id="file-size">1.8 MB</span>
-                    </div>
-                    <button type="button" class="remove-btn" id="remove-file" title="Remove file">✕</button>
+            <!-- Optional Course Name -->
+            <div class="forge-config-group">
+                <label class="forge-label" for="custom-title">Course Name (Optional)</label>
+                <input type="text" id="custom-title" name="custom_title" class="forge-input" placeholder="e.g. System Integration & Architecture (Leave blank for auto-title)">
+            </div>
+
+            <!-- Study Mode Selection -->
+            <div class="forge-config-group">
+                <label class="forge-label">Study Mode</label>
+                <div class="option-grid">
+                    <label class="option-card selected" data-type="radio">
+                        <input type="radio" name="study_goal" value="quick_cram" checked>
+                        <span class="option-title">⚡ High-Yield Cram Sheet</span>
+                        <span class="option-desc">Definitions, key terms, analogies, comparison tables, and quick exam cues.</span>
+                    </label>
+                    <label class="option-card" data-type="radio">
+                        <input type="radio" name="study_goal" value="deep_learning">
+                        <span class="option-title">📚 Deep Learning</span>
+                        <span class="option-desc">Thorough conceptual breakdowns, workflows, and system architecture details.</span>
+                    </label>
                 </div>
             </div>
-            <input type="file" id="file-upload" name="content_file" class="hidden-file-input" accept=".pdf,.docx,.txt" required>
-        </div>
 
-        <!-- Optional Course Name -->
-        <div class="forge-config-group">
-            <label class="forge-label" for="custom-title">Course Name (Optional)</label>
-            <input type="text" id="custom-title" name="custom_title" class="forge-input" placeholder="e.g. System Integration & Architecture (Leave blank for auto-title)">
-        </div>
-
-        <!-- Study Goal Selection -->
-        <div class="forge-config-group">
-            <label class="forge-label">Study Mode</label>
-            <div class="option-grid">
-                <label class="option-card selected" data-type="radio">
-                    <input type="radio" name="study_goal" value="cram" checked>
-                    <span class="option-title">⚡ High-Yield Cram Sheet</span>
-                    <span class="option-desc">Definitions, key terms, analogies, comparison tables, and quick exam cues.</span>
-                </label>
-                <label class="option-card" data-type="radio">
-                    <input type="radio" name="study_goal" value="deep_learning">
-                    <span class="option-title">📚 Deep Learning</span>
-                    <span class="option-desc">Thorough conceptual breakdowns, workflows, and system architecture details.</span>
-                </label>
+            <!-- Assessment Focus Selection -->
+            <div class="forge-config-group">
+                <label class="forge-label">Target Exam Format</label>
+                <div class="option-grid tri">
+                    <label class="option-card selected" data-type="radio">
+                        <input type="radio" name="assessment_focus" value="multiple_choice" checked>
+                        <span class="option-title">Multiple Choice</span>
+                        <span class="option-desc">Contrasting similar terms and application questions.</span>
+                    </label>
+                    <label class="option-card" data-type="radio">
+                        <input type="radio" name="assessment_focus" value="identification">
+                        <span class="option-title">Identification</span>
+                        <span class="option-desc">Direct definition-to-term recognition cues.</span>
+                    </label>
+                    <label class="option-card" data-type="radio">
+                        <input type="radio" name="assessment_focus" value="enumeration">
+                        <span class="option-title">Enumeration</span>
+                        <span class="option-desc">Categorized lists, phases, and framework components.</span>
+                    </label>
+                </div>
             </div>
-        </div>
 
-        <!-- Assessment Focus Selection -->
-        <div class="forge-config-group">
-            <label class="forge-label">Target Exam Format</label>
-            <div class="option-grid tri">
-                <label class="option-card selected" data-type="radio">
-                    <input type="radio" name="assessment_focus" value="multiple_choice" checked>
-                    <span class="option-title">Multiple Choice</span>
-                    <span class="option-desc">Contrasting similar terms and application questions.</span>
-                </label>
-                <label class="option-card" data-type="radio">
-                    <input type="radio" name="assessment_focus" value="identification">
-                    <span class="option-title">Identification</span>
-                    <span class="option-desc">Direct definition-to-term recognition cues.</span>
-                </label>
-                <label class="option-card" data-type="radio">
-                    <input type="radio" name="assessment_focus" value="enumeration">
-                    <span class="option-title">Enumeration</span>
-                    <span class="option-desc">Categorized lists, phases, and framework components.</span>
-                </label>
-            </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-chunky btn-block forge-btn" style="margin-top: 32px;">
-            Generate Learning Path &rarr;
-        </button>
-    </form>
+            <button type="submit" class="btn btn-primary btn-chunky btn-block forge-btn" style="margin-top: 28px;">
+                Generate Learning Path &rarr;
+            </button>
+        </form>
+    </main>
 </div>
 
-<!-- Animated Processing Modal -->
-<div id="forge-loader" class="forge-loader-backdrop">
+<!-- Modal Loader -->
+<div id="forge-loader" class="forge-loader-backdrop" aria-hidden="true">
     <div class="forge-loader-card">
         <div class="forge-spinner"></div>
         <span class="forge-loader-badge">Synthesizing Curriculum</span>
@@ -229,7 +328,7 @@
         }
     });
 
-    // Card Selection Interactions
+    // Selection Cards
     document.querySelectorAll('.option-card').forEach(card => {
         card.addEventListener('click', () => {
             const groupName = card.querySelector('input').name;
@@ -240,7 +339,7 @@
         });
     });
 
-    // Reliable Loader Execution
+    // Loader Execution
     document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('course-form');
         const loader = document.getElementById('forge-loader');
@@ -256,10 +355,9 @@
             "Finalizing your learning path..."
         ];
 
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', () => {
             if (!fileInput.files || !fileInput.files.length) return;
 
-            // Trigger active display via class
             loader.classList.add('is-active');
             document.body.style.overflow = 'hidden';
 
