@@ -23,8 +23,7 @@ from .models import (
 from .schemas import GenerationPreferences
 from .services import generate_course_journey
 
-REGULAR_QUIZ_PASS_THRESHOLD = 70
-TEST_OUT_THRESHOLD = 85
+QUIZ_PASS_THRESHOLD = 75
 LESSON_COMPLETION_XP = 15
 
 
@@ -48,7 +47,7 @@ def calculate_quiz_xp(percentage):
         return 60
     if percentage >= 85:
         return 45
-    if percentage >= 70:
+    if percentage >= QUIZ_PASS_THRESHOLD:
         return 35
     if percentage >= 50:
         return 20
@@ -85,8 +84,9 @@ def get_best_quiz_percentage(user, chapter):
 
 def get_chapter_completion_state(user, chapter):
     """
-    Guided completion: Lesson marked complete + quiz score >= 70%
-    Test-out completion: Quiz score >= 85% (even if reading was skipped)
+    A chapter is completed when its quiz score reaches 75%, with or without
+    a completed lesson. Reading remains part of the guided learning path,
+    but it is not a separate completion threshold.
     """
     lesson_completed = ChapterCompletion.objects.filter(user=user, chapter=chapter).exists()
     best_quiz_percentage = get_best_quiz_percentage(user, chapter)
@@ -95,17 +95,17 @@ def get_chapter_completion_state(user, chapter):
 
     quiz_passed = (
         best_quiz_percentage is not None
-        and best_quiz_percentage >= REGULAR_QUIZ_PASS_THRESHOLD
+        and best_quiz_percentage >= QUIZ_PASS_THRESHOLD
     )
 
     tested_out = (
         best_quiz_percentage is not None
-        and best_quiz_percentage >= TEST_OUT_THRESHOLD
+        and best_quiz_percentage >= QUIZ_PASS_THRESHOLD
         and not lesson_completed
     )
 
     if has_quiz:
-        completed = (lesson_completed and quiz_passed) or tested_out
+        completed = quiz_passed
     else:
         completed = lesson_completed
 
@@ -420,8 +420,7 @@ def chapter_review(request, pk):
             "prev_chapter": previous_chapter,
             "previous_state": previous_state,
             "course": course,
-            "regular_pass_threshold": REGULAR_QUIZ_PASS_THRESHOLD,
-            "test_out_threshold": TEST_OUT_THRESHOLD,
+            "pass_threshold": QUIZ_PASS_THRESHOLD,
         }, status=403)
 
     progress = calculate_course_progress(request.user, course)
@@ -443,8 +442,7 @@ def chapter_review(request, pk):
         "total_chapters": progress["total_chapters"],
         "completed_count": progress["completed_count"],
         "course_progress_pct": progress["percentage"],
-        "regular_pass_threshold": REGULAR_QUIZ_PASS_THRESHOLD,
-        "test_out_threshold": TEST_OUT_THRESHOLD,
+        "pass_threshold": QUIZ_PASS_THRESHOLD,
     })
 
 
@@ -544,8 +542,7 @@ def chapter_quiz(request, pk):
             "previous_chapter": previous_chapter,
             "prev_chapter": previous_chapter,
             "course": chapter.course,
-            "regular_pass_threshold": REGULAR_QUIZ_PASS_THRESHOLD,
-            "test_out_threshold": TEST_OUT_THRESHOLD,
+            "pass_threshold": QUIZ_PASS_THRESHOLD,
         }, status=403)
 
     quiz = getattr(chapter, "quiz", None)
@@ -763,9 +760,9 @@ def submit_quiz(request, pk):
         "score": total_earned,
         "total_questions": total_maximum,
         "percentage": percentage,
-        "passed": (percentage >= REGULAR_QUIZ_PASS_THRESHOLD),
+        "passed": (percentage >= QUIZ_PASS_THRESHOLD),
         "tested_out": (
-            percentage >= TEST_OUT_THRESHOLD and not completion_state["lesson_completed"]
+            percentage >= QUIZ_PASS_THRESHOLD and not completion_state["lesson_completed"]
         ),
         "chapter_completed": completion_state["completed"],
         "next_chapter_unlocked": (completion_state["completed"] and next_chapter is not None),

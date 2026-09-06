@@ -94,7 +94,7 @@ class QuestionGradingLogicTests(TestCase):
         self.assertEqual(feedback["missing_items"], ["Traffic Management"])
 
     def test_calculate_quiz_xp_tiers(self):
-        self.assertEqual([calculate_quiz_xp(score) for score in (40, 60, 70, 85, 100)], [10, 20, 35, 45, 60])
+        self.assertEqual([calculate_quiz_xp(score) for score in (40, 60, 74, 75, 85, 100)], [10, 20, 20, 35, 45, 60])
 
 
 class MixedAssessmentFlowTests(TestCase):
@@ -212,7 +212,8 @@ class MixedAssessmentFlowTests(TestCase):
     def test_quiz_xp_is_based_on_percentage_bands(self):
         self.assertEqual(calculate_quiz_xp(49), 10)
         self.assertEqual(calculate_quiz_xp(50), 20)
-        self.assertEqual(calculate_quiz_xp(70), 35)
+        self.assertEqual(calculate_quiz_xp(74), 20)
+        self.assertEqual(calculate_quiz_xp(75), 35)
         self.assertEqual(calculate_quiz_xp(85), 45)
         self.assertEqual(calculate_quiz_xp(100), 60)
 
@@ -305,21 +306,21 @@ class ProgressionGateIntegrationTests(TestCase):
         self.assertEqual(get_chapter_status(self.user, self.chapter_one), "available")
         self.assertEqual(get_chapter_status(self.user, self.chapter_two), "locked")
 
-    def test_guided_pass_requires_reading_and_seventy_percent(self):
+    def test_quiz_pass_at_seventy_five_percent_unlocks_chapter(self):
         ChapterCompletion.objects.create(user=self.user, chapter=self.chapter_one)
         QuizAttempt.objects.create(user=self.user, quiz=self.quiz, score=3, total_questions=4, xp_earned=35)
 
         self.assertEqual(get_chapter_status(self.user, self.chapter_one), "completed")
         self.assertEqual(get_chapter_status(self.user, self.chapter_two), "available")
 
-    def test_test_out_at_eighty_five_percent_does_not_require_reading(self):
-        QuizAttempt.objects.create(user=self.user, quiz=self.quiz, score=9, total_questions=10, xp_earned=45)
+    def test_quiz_pass_at_seventy_five_percent_does_not_require_reading(self):
+        QuizAttempt.objects.create(user=self.user, quiz=self.quiz, score=3, total_questions=4, xp_earned=35)
 
         self.assertEqual(get_chapter_status(self.user, self.chapter_one), "completed")
         self.assertEqual(get_chapter_status(self.user, self.chapter_two), "available")
 
-    def test_seventy_five_percent_without_reading_does_not_unlock(self):
-        QuizAttempt.objects.create(user=self.user, quiz=self.quiz, score=3, total_questions=4, xp_earned=35)
+    def test_below_seventy_five_percent_without_reading_does_not_unlock(self):
+        QuizAttempt.objects.create(user=self.user, quiz=self.quiz, score=2, total_questions=4, xp_earned=20)
 
         self.assertEqual(get_chapter_status(self.user, self.chapter_one), "available")
         self.assertEqual(get_chapter_status(self.user, self.chapter_two), "locked")

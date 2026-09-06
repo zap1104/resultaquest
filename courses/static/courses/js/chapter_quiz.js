@@ -8,9 +8,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressFill = document.getElementById('quiz-progress-fill');
     const progressLabel = document.getElementById('quiz-progress-label');
     const resultSheet = document.getElementById('result-sheet');
+    const continueLearningLink = document.getElementById('continue-learning-btn');
     const reviewDrawer = document.getElementById('review-drawer-modal');
     const reviewContainer = document.getElementById('review-items-container');
     const reviewHeaderScore = document.getElementById('review-header-score');
+    const backToResultsButton = document.getElementById('back-to-results-btn');
+    const reviewContinueLink = document.getElementById('review-continue-btn');
     const userAnswers = {};
     let currentIndex = 0;
     let currentFeedback = null;
@@ -34,23 +37,26 @@ document.addEventListener('DOMContentLoaded', () => {
         review.innerHTML = '';
         addText(review, 'feedback-title', 'Answer Review');
         reviewContainer.innerHTML = '';
-        reviewHeaderScore.textContent = `Score: ${results.reduce((sum, item) => sum + item.earned_points, 0)} points`;
+        reviewHeaderScore.textContent = `Score: ${results.reduce((sum, item) => sum + (item.earned_points || 0), 0)} points`;
         results.forEach((result, index) => {
+            const questionType = result.question_type || 'assessment';
+            const earnedPoints = result.earned_points || 0;
+            const maximumPoints = result.maximum_points || 0;
             const card = document.createElement('div');
-            const isFull = result.earned_points === result.maximum_points;
-            card.className = `review-item-card ${isFull ? 'is-correct' : (result.earned_points > 0 ? 'is-partial' : '')}`;
+            const isFull = earnedPoints === maximumPoints;
+            card.className = `review-item-card ${isFull ? 'is-correct' : (earnedPoints > 0 ? 'is-partial' : '')}`;
             const header = document.createElement('div');
             header.className = 'review-item-header';
-            addText(header, '', `${index + 1}. ${result.question_type.replace('_', ' ')}`);
-            addText(header, '', `${result.earned_points}/${result.maximum_points} points`);
+            addText(header, '', `${index + 1}. ${questionType.replace('_', ' ')}`);
+            addText(header, '', `${earnedPoints}/${maximumPoints} points`);
             card.appendChild(header);
             addText(card, 'review-item-qtext', result.question_text || 'Question');
             const answerBlock = document.createElement('div');
             answerBlock.className = 'review-answer-block';
-            if (result.question_type === 'multiple_choice' || result.question_type === 'true_false') {
+            if (questionType === 'multiple_choice' || questionType === 'true_false') {
                 addText(answerBlock, '', `Your selection: ${result.submitted_choice_text || 'No answer'}`);
                 if (!result.is_correct) addText(answerBlock, '', `Correct choice: ${result.correct_choice_text || 'Unavailable'}`);
-            } else if (result.question_type === 'identification') {
+            } else if (questionType === 'identification') {
                 addText(answerBlock, '', `Your answer: ${result.submitted_answer?.text || 'Blank'}`);
                 if (!result.is_correct) addText(answerBlock, '', `Accepted answer: ${result.canonical_answer || 'Unavailable'}`);
             } else {
@@ -245,6 +251,13 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('sheet-level').textContent = result.new_level;
             document.getElementById('sheet-streak').textContent = result.new_streak;
             renderAnswerReview(result.results || []);
+            const nextUrl = result.next_chapter_id
+                ? `/chapters/${result.next_chapter_id}/review/`
+                : continueLearningLink?.href;
+            if (nextUrl) {
+                if (continueLearningLink) continueLearningLink.href = nextUrl;
+                if (reviewContinueLink) reviewContinueLink.href = nextUrl;
+            }
             updateProgress(true);
             resultSheet.classList.add('open');
         } catch (error) {
@@ -256,6 +269,11 @@ document.addEventListener('DOMContentLoaded', () => {
         resultSheet.classList.remove('open');
         reviewDrawer.classList.add('is-active');
         reviewDrawer.setAttribute('aria-hidden', 'false');
+    });
+    backToResultsButton?.addEventListener('click', () => {
+        reviewDrawer.classList.remove('is-active');
+        reviewDrawer.setAttribute('aria-hidden', 'true');
+        resultSheet.classList.add('open');
     });
     document.getElementById('close-review-btn')?.addEventListener('click', () => {
         reviewDrawer.classList.remove('is-active');

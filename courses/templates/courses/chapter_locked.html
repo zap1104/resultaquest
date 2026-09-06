@@ -135,25 +135,25 @@
                     {% if previous_state.quiz_passed %}
                         <strong class="requirement-done">✓ {{ previous_state.best_quiz_percentage }}%</strong>
                     {% else %}
-                        <strong>&ge; {{ regular_pass_threshold }}% Required</strong>
+                        <strong>&ge; {{ pass_threshold }}% Required</strong>
                     {% endif %}
                 </div>
             </div>
 
-            <div class="locked-divider"><span>or test out</span></div>
-
-            <p style="font-size: 0.86rem;">
-                Score at least <strong>{{ test_out_threshold }}%</strong> on the Chapter {{ prev_chapter.order }} quiz to unlock this chapter immediately without reading.
-            </p>
-
             <div class="locked-actions">
-                <a href="{% url 'courses:chapter_review' prev_chapter.pk %}" class="btn btn-secondary">
-                    Review Chapter {{ prev_chapter.order }}
-                </a>
+                {% if not previous_state.lesson_completed %}
+                    <div class="locked-divider"><span>guided path or quiz pass</span></div>
+                    <p style="font-size: 0.86rem;">
+                        Read the lesson and mark it complete, or score at least <strong>{{ pass_threshold }}%</strong> on the quiz.
+                    </p>
+                    <a href="{% url 'courses:chapter_review' prev_chapter.pk %}" class="btn btn-secondary">
+                        Review Chapter {{ prev_chapter.order }}
+                    </a>
+                {% endif %}
 
                 {% if prev_chapter.quiz %}
                     <a href="{% url 'courses:chapter_quiz' prev_chapter.pk %}" class="btn btn-primary btn-chunky">
-                        ⚡ Take Unlock Challenge Quiz (&ge; {{ test_out_threshold }}%) &rarr;
+                        ⚡ Take Chapter {{ prev_chapter.order }} Quiz (&ge; {{ pass_threshold }}%) &rarr;
                     </a>
                 {% endif %}
 
