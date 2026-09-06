@@ -9,11 +9,19 @@ from datetime import timedelta
 # --- SPRINT A & B & C: GAMIFICATION PROFILE & LEDGER ---
 
 class UserProfile(models.Model):
+    PLAN_CHOICES = [
+        ("free", "StudyQuest Free"),
+        ("plus", "StudyQuest Plus"),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     total_xp = models.IntegerField(default=0)
     current_level = models.IntegerField(default=1)
     streak_days = models.IntegerField(default=0)
     last_study_date = models.DateField(null=True, blank=True)
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default="free")
+    last_course_generated_at = models.DateTimeField(null=True, blank=True)
+    bonus_course_credits = models.PositiveIntegerField(default=0)
 
     def award_xp(self, amount, reason):
         XPTransaction.objects.create(user=self.user, amount=amount, reason=reason)
@@ -55,8 +63,16 @@ class Course(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='courses')
 
+    STATUS_CHOICES = [
+        ("processing", "Processing"),
+        ("active", "Active"),
+        ("archived", "Archived"),
+        ("failed", "Failed"),
+    ]
+
     title = models.CharField(max_length=200)
     description = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
 
     syllabus_text = models.TextField(blank=True)
     modules_text = models.TextField(blank=True)
@@ -104,30 +120,42 @@ class Quiz(models.Model):
         return self.title or f'Quiz for {self.chapter.title}'
 
 
+# courses/models.py
 class Question(models.Model):
-    QUESTION_TYPES = [
-        ('multiple_choice', 'Multiple Choice'),
-        ('true_false', 'True or False'),
+    QUESTION_TYPE_CHOICES = [
+        ("multiple_choice", "Multiple Choice"),
+        ("true_false", "True or False"),
+        ("identification", "Identification"),
+        ("enumeration", "Enumeration"),
     ]
 
-    quiz = models.ForeignKey(Quiz, related_name='questions', on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name="questions")
     order = models.PositiveIntegerField(default=1)
     question_type = models.CharField(
-        max_length=20,
-        choices=QUESTION_TYPES,
-        default='multiple_choice'
+        max_length=30,
+        choices=QUESTION_TYPE_CHOICES,
+        default="multiple_choice",
     )
-    text = models.CharField(max_length=500)
-    explanation = models.TextField(blank=True, default='')
+    text = models.TextField()
+    explanation = models.TextField(blank=True, default="")
+    answer_data = models.JSONField(default=dict, blank=True)
 
     class Meta:
-        ordering = ['order']
+        ordering = ["order"]
+
+    def max_points(self):
+        if self.question_type == "enumeration":
+            return len(self.answer_data.get("expected_items", []))
+        return 1
 
     def __str__(self):
-        return f"[{self.get_question_type_display()}] {self.text}"
+        return f"Q{self.order} ({self.question_type}): {self.text[:40]}"
 
 
 class Choice(models.Model):
+    """Only used for question_type='multiple_choice'. Identification and
+    Enumeration questions have no related Choice rows.
+    """
     question = models.ForeignKey(Question, related_name='choices', on_delete=models.CASCADE)
     text = models.CharField(max_length=300)
     is_correct = models.BooleanField(default=False)
@@ -188,3 +216,34 @@ class ChapterCompletion(models.Model):
 
     def __str__(self):
         return f'{self.user.username} — {self.chapter.title} (read)'
+
+
+class CourseCreditTransaction(models.Model):
+    TRANSACTION_TYPES = [
+        ("weekly_spend", "Weekly Credit Spent"),
+        ("bonus_award", "Completion Bonus Awarded"),
+        ("bonus_spend", "Bonus Credit Spent"),
+        ("admin_adjustment", "Admin Adjustment"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="course_credit_transactions")
+    transaction_type = models.CharField(max_length=30, choices=TRANSACTION_TYPES)
+    amount = models.SmallIntegerField()
+    related_course = models.ForeignKey(Course, null=True, blank=True, on_delete=models.SET_NULL, related_name="credit_transactions")
+    reference_key = models.CharField(max_length=150, null=True, blank=True, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class UserCourseCompletion(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="course_completions")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="user_completions")
+    completed_at = models.DateTimeField(auto_now_add=True)
+    bonus_credit_awarded = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "course"], name="unique_user_course_completion"),
+        ]

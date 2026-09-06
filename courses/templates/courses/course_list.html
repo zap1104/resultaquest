@@ -1,27 +1,66 @@
 {% extends 'courses/base.html' %}
 {% load static %}
 
-{% block title %}Quest Library — StudyQuest{% endblock %}
+{% block title %}Course Library — StudyQuest{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<style>
+    .course-library-page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 56px; }
+    .course-library-header { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:22px; }
+    .course-library-header h1 { margin:4px 0; }
+    .course-library-tabs { display:flex; gap:8px; border-bottom:1px solid var(--border); margin-bottom:16px; }
+    .course-library-tabs a { border-radius:0; }
+    .library-capacity-strip { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:0 0 20px; padding:12px 16px; border:1px solid rgba(0,194,168,.2); border-left:3px solid var(--accent); border-radius:12px; background:linear-gradient(90deg,rgba(0,194,168,.07),rgba(108,92,231,.035)); }
+    .library-capacity-strip strong,.library-capacity-strip span { display:block; }
+    .library-capacity-strip strong { color:var(--ink); font-size:.84rem; }
+    .library-capacity-strip span { margin-top:2px; color:var(--muted); font-size:.73rem; }
+    .course-library-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+    .library-course-card { min-width:0; min-height:300px; display:flex; flex-direction:column; padding:18px; border:1px solid var(--border); border-left:3px solid var(--primary); border-radius:16px; background:linear-gradient(145deg,var(--surface),rgba(108,92,231,.035)); transition:transform .16s ease,box-shadow .16s ease; }
+    .library-course-card:hover { transform:translateY(-3px); box-shadow:0 12px 30px rgba(0,0,0,.24); }
+    .library-course-top { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    .course-status-badge { padding:4px 8px; border-radius:999px; background:rgba(108,92,231,.12); color:var(--primary); font-size:.67rem; font-weight:900; text-transform:uppercase; }
+    .library-course-content { margin-top:14px; }
+    .library-course-content h2 { margin:0 0 9px; font-size:1.08rem; line-height:1.35; }
+    .library-course-content h2 a { color:var(--ink); text-decoration:none; }
+    .library-course-content p { margin:0; color:var(--muted); font-size:.82rem; line-height:1.55; }
+    .library-course-progress { margin-top:auto; padding-top:20px; }
+    .course-progress-labels { display:flex; justify-content:space-between; margin-bottom:7px; color:var(--muted); font-size:.72rem; }
+    .course-progress-labels strong { color:var(--ink); }
+    .course-progress-track { height:7px; overflow:hidden; border-radius:999px; background:var(--bg); }
+    .course-progress-fill { height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--primary),var(--accent)); }
+    .library-course-actions { display:grid; grid-template-columns:1fr auto; gap:8px; margin-top:16px; }
+    @media (max-width:1000px) { .course-library-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:620px) { .course-library-header,.library-capacity-strip { align-items:stretch; flex-direction:column; } .course-library-grid { grid-template-columns:1fr; } }
+</style>
+<div class="course-library-page">
+<div class="course-library-header">
     <div>
-        <h1>Quest Library</h1>
-        <p class="subtitle">Your complete archive of forged courses and study materials.</p>
+        <h1>Course Library</h1>
+        <p class="subtitle">Manage your active and archived AI-generated courses.</p>
     </div>
     <a href="{% url 'courses:course_create' %}" class="btn btn-primary">+ Create Course</a>
 </div>
 
-{% if courses %}
-    <div class="card-grid">
-        {% for course in courses %}
-            <a class="card course-card" href="{% url 'courses:course_detail' course.pk %}">
-                <h3>{{ course.title }}</h3>
-                <p>{{ course.description|default:"No description provided."|truncatechars:75 }}</p>
-                <div style="margin-top: 12px;">
-                    <span class="chip chip-accent">{{ course.chapters.count }} Chapter{{ course.chapters.count|pluralize }}</span>
-                </div>
-            </a>
+<div class="course-library-tabs">
+    <a href="?tab=active" class="btn btn-ghost">Active Courses ({{ active_courses.count }})</a>
+    <a href="?tab=archived" class="btn btn-ghost">Archived ({{ archived_courses.count }})</a>
+</div>
+
+<div class="library-capacity-strip">
+    <div><strong>{{ profile.plan|title }} plan · Active courses {{ active_count }} / {{ active_limit }}</strong><span>Archived courses do not consume active slots. Bonus credits: {{ user.userprofile.bonus_course_credits }} / {{ eligibility.bonus_limit }}</span></div>
+    <a class="btn btn-ghost btn-sm" href="{% url 'courses:course_create' %}">Create course</a>
+</div>
+
+{% if active_tab == 'active' and active_courses %}
+    <div class="course-library-grid">
+        {% for course in active_courses %}
+            <article class="library-course-card"><div class="library-course-top"><span class="course-status-badge">Active</span><span class="chip">{{ course.chapters.count }} chapters</span></div><div class="library-course-content"><h2><a href="{% url 'courses:course_detail' course.pk %}">{{ course.title }}</a></h2><p>{{ course.description|default:"AI-generated study path based on your materials."|truncatechars:100 }}</p></div><div class="library-course-progress"><div class="course-progress-labels"><span>Course progress</span><strong>{{ course.progress_pct|default:0 }}%</strong></div><div class="course-progress-track"><div class="course-progress-fill" style="width:{{ course.progress_pct|default:0 }}%;"></div></div></div><div class="library-course-actions"><a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-primary btn-sm">Open course</a><form method="post" action="{% url 'courses:course_archive' course.pk %}">{% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">Archive</button></form></div></article>
+        {% endfor %}
+    </div>
+{% elif active_tab == 'archived' and archived_courses %}
+    <div class="course-library-grid">
+        {% for course in archived_courses %}
+            <article class="library-course-card" style="border-left-color:var(--muted);"><div class="library-course-top"><span class="course-status-badge">Archived</span></div><div class="library-course-content"><h2>{{ course.title }}</h2><p>Archived study material remains available for restoration.</p></div><div class="library-course-actions"><form method="post" action="{% url 'courses:course_restore' course.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" type="submit" {% if active_count >= active_limit %}disabled{% endif %}>Restore</button></form></div></article>
         {% endfor %}
     </div>
 {% else %}
@@ -37,4 +76,5 @@
         </a>
     </div>
 {% endif %}
+</div>
 {% endblock %}

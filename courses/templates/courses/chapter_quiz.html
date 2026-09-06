@@ -5,6 +5,35 @@
 
 {% block content %}
 <style>
+    /* ================= SLEEK CUSTOM SCROLLBARS ================= */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+    }
+
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+        margin: 4px 0;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.16);
+        border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary, #6c5ce7);
+    }
+
+    ::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+
     .topbar, .footer { display: none !important; }
     body { background: var(--bg); }
     .page { max-width: 760px; padding: 0 0 120px; margin: 0 auto; }
@@ -91,6 +120,16 @@
 
     .quiz-action-btn { display: block; width: calc(100% - 40px); margin: 24px 20px 0; padding: 16px; font-size: 1.05rem; }
     .quiz-action-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    .quiz-typed-answer { display: grid; gap: 12px; padding: 0 20px; }
+    .quiz-text-input { width: 100%; box-sizing: border-box; padding: 14px 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; }
+    .quiz-text-input:focus { outline: none; border-color: var(--primary); }
+    .enumeration-inputs { counter-reset: answer; }
+    .enumeration-inputs .quiz-text-input { counter-increment: answer; }
+    .quiz-saving { padding: 80px 20px; text-align: center; color: var(--muted); }
+    .answer-review { width: 100%; max-width: 680px; max-height: 260px; overflow: auto; display: grid; gap: 8px; }
+    .answer-review-card { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; text-align: left; background: var(--bg); }
+    .answer-review-card strong { color: var(--ink); }
+    .answer-review-card .review-copy { margin: 4px 0 0; color: var(--muted); font-size: 0.82rem; }
 
     /* Result Sheet */
     .result-sheet {
@@ -109,6 +148,24 @@
     .sheet-stat-val.streak { color: #ff8a3d; }
     .sheet-stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-top: 6px; }
     .sheet-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
+        .review-drawer-backdrop { position: fixed; inset: 0; z-index: 1100; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(10, 14, 26, 0.9); backdrop-filter: blur(8px); }
+        .review-drawer-backdrop.is-active { display: flex; }
+        .review-drawer-card { width: 100%; max-width: 820px; height: 86vh; max-height: 860px; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55); }
+        .review-drawer-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+        .review-drawer-header h2 { margin: 0; color: var(--ink); font-size: 1.2rem; }
+        .review-drawer-scroll { display: grid; gap: 12px; overflow-y: auto; padding: 20px 28px 20px 20px; overscroll-behavior: contain; }
+        .review-drawer-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 22px; border-top: 1px solid var(--border); background: var(--surface); }
+        .review-drawer-footer .btn { margin: 0; }
+        .review-item-card { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--border); border-left: 4px solid var(--danger); border-radius: 12px; background: var(--bg); }
+        .review-item-card.is-correct { border-left-color: var(--accent); }
+        .review-item-card.is-partial { border-left-color: var(--gold); }
+        .review-item-header { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
+        .review-item-qtext { margin: 0; color: var(--ink); font-size: 0.98rem; line-height: 1.4; }
+        .review-answer-block { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 0.84rem; }
+        .review-answer-block strong { color: var(--ink); }
+        .review-expl { margin: 0; color: var(--muted); font-size: 0.84rem; line-height: 1.5; }
+        .review-close-btn { width: 34px; height: 34px; padding: 0; }
+    .answer-review { padding-right: 8px; overscroll-behavior: contain; }
 </style>
 
 {% if quiz and quiz.questions.all %}
@@ -126,36 +183,59 @@
     <div id="result-sheet" class="result-sheet">
         <h2 style="margin: 0; font-size: 1.6rem;">Quiz Complete! 🎉</h2>
         <div class="sheet-stats">
-            <div class="sheet-stat-box"><div id="sheet-score" class="sheet-stat-val">0/0</div><div class="sheet-stat-label">Score</div></div>
+            <div class="sheet-stat-box"><div id="sheet-score" class="sheet-stat-val">0/0</div><div class="sheet-stat-label">Points</div></div>
+            <div class="sheet-stat-box"><div id="sheet-percentage" class="sheet-stat-val">0%</div><div class="sheet-stat-label">Percentage</div></div>
             <div class="sheet-stat-box"><div id="sheet-xp" class="sheet-stat-val gold">+0</div><div class="sheet-stat-label">XP Earned</div></div>
             <div class="sheet-stat-box"><div id="sheet-level" class="sheet-stat-val">1</div><div class="sheet-stat-label">Level</div></div>
             <div class="sheet-stat-box"><div id="sheet-streak" class="sheet-stat-val streak">0</div><div class="sheet-stat-label">Day Streak</div></div>
         </div>
+        <div id="answer-review" class="answer-review"></div>
         <div class="sheet-actions">
-            <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="btn btn-primary btn-chunky" style="text-align: center;">
+            <button type="button" class="btn btn-secondary" id="open-review-btn">Review Answers &amp; Feedback</button>
+            <a href="{% url 'courses:course_detail' chapter.course.pk %}" id="continue-learning-btn" class="btn btn-primary btn-chunky" style="text-align: center;">
                 Continue Learning &rarr;
             </a>
         </div>
+    </div>
+
+    <div class="review-drawer-backdrop" id="review-drawer-modal" aria-hidden="true">
+        <section class="review-drawer-card" role="dialog" aria-modal="true" aria-labelledby="review-drawer-title">
+            <header class="review-drawer-header">
+                <div>
+                    <h2 id="review-drawer-title">Assessment Review</h2>
+                    <span id="review-header-score" class="quiz-progress-label"></span>
+                </div>
+                <button type="button" class="quiz-exit-btn review-close-btn" id="close-review-btn" aria-label="Close review">✕</button>
+            </header>
+            <div class="review-drawer-scroll" id="review-items-container"></div>
+            <footer class="review-drawer-footer">
+                <button type="button" class="btn btn-secondary" id="back-to-results-btn">Back to Score</button>
+                <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="btn btn-primary btn-chunky" id="review-continue-btn">Continue Learning &rarr;</a>
+            </footer>
+        </section>
     </div>
 
     <!-- EMBEDDED QUIZ DATA WITH QUESTION TYPE -->
     <script id="quiz-data" type="application/json">
         {
             "chapterId": {{ chapter.pk }},
+            "checkUrl": "{% url 'courses:check_quiz_answer' chapter.pk %}",
             "submitUrl": "{% url 'courses:submit_quiz' chapter.pk %}",
             "questions": [
                 {% for q in quiz.questions.all %}
                 {
                     "id": {{ q.id }},
                     "type": "{{ q.question_type|default:'multiple_choice' }}",
+                    "order": {{ q.order }},
                     "text": "{{ q.text|escapejs }}",
-                    "explanation": "{{ q.explanation|default:''|escapejs }}",
+                    "max_points": {{ q.max_points }},
+                    "expected_count": {{ q.answer_data.expected_items|length|default:0 }},
+                    "order_matters": {{ q.answer_data.order_matters|yesno:"true,false" }},
                     "choices": [
                         {% for c in q.choices.all %}
                         {
                             "id": {{ c.id }}, 
-                            "text": "{{ c.text|escapejs }}",
-                            "isCorrect": {{ c.is_correct|yesno:"true,false" }}
+                            "text": "{{ c.text|escapejs }}"
                         }{% if not forloop.last %},{% endif %}
                         {% endfor %}
                     ]
@@ -165,7 +245,8 @@
         }
     </script>
 
-    <script>
+    {% comment %} Legacy choice-only renderer retained temporarily for reference.{% endcomment %}
+    {% comment %}<script>
     document.addEventListener('DOMContentLoaded', () => {
         const rawData = document.getElementById('quiz-data');
         if (!rawData) return;
@@ -335,7 +416,8 @@
 
         renderQuestion();
     });
-    </script>
+    </script>{% endcomment %}
+    <script src="{% static 'courses/js/chapter_quiz.js' %}"></script>
 {% else %}
     <div style="padding: 60px 20px; text-align: center;">
         <p class="empty-state">No quiz questions yet for this chapter.</p>

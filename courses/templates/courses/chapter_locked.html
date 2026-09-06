@@ -1,0 +1,167 @@
+{% extends 'courses/base.html' %}
+
+{% block title %}Chapter Locked — StudyQuest{% endblock %}
+
+{% block content %}
+<style>
+    .locked-chapter-page {
+        min-height: 75vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+    }
+
+    .locked-chapter-card {
+        width: min(100%, 540px);
+        padding: 36px 32px;
+        text-align: center;
+        border-radius: 22px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .locked-chapter-icon {
+        font-size: 3rem;
+        line-height: 1;
+        margin-bottom: 12px;
+    }
+
+    .locked-chapter-card h1 {
+        margin: 14px 0 10px;
+        color: var(--ink);
+        font-size: 1.5rem;
+    }
+
+    .locked-chapter-card p {
+        color: var(--muted);
+        line-height: 1.6;
+        margin: 0;
+        font-size: 0.92rem;
+    }
+
+    .locked-requirements {
+        margin-top: 24px;
+        padding: 18px 20px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--bg);
+        text-align: left;
+    }
+
+    .locked-requirements h2 {
+        margin: 0 0 12px;
+        font-size: 0.95rem;
+        color: var(--ink);
+    }
+
+    .requirement-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 8px 0;
+        color: var(--muted);
+        font-size: 0.86rem;
+    }
+
+    .requirement-row + .requirement-row {
+        border-top: 1px solid var(--border);
+    }
+
+    .requirement-row strong {
+        color: var(--ink);
+    }
+
+    .requirement-row .requirement-done {
+        color: var(--accent);
+    }
+
+    .locked-divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 20px 0;
+    }
+
+    .locked-divider::before,
+    .locked-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .locked-divider span {
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .locked-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 22px;
+    }
+</style>
+
+<div class="page locked-chapter-page">
+    <section class="locked-chapter-card">
+        <div class="locked-chapter-icon" aria-hidden="true">🔒</div>
+        <span class="chip chip-gold">Prerequisite Required</span>
+
+        <h1>{{ chapter.title }} is Locked</h1>
+        <p>
+            Complete the previous chapter through the guided learning path, or prove your prior knowledge with an unlock challenge.
+        </p>
+
+        {% if prev_chapter %}
+            <div class="locked-requirements">
+                <h2>Prerequisite: Chapter {{ prev_chapter.order }}</h2>
+                <div class="requirement-row">
+                    <span>1. Read & mark lesson complete</span>
+                    {% if previous_state.lesson_completed %}
+                        <strong class="requirement-done">✓ Done</strong>
+                    {% else %}
+                        <strong>Required</strong>
+                    {% endif %}
+                </div>
+                <div class="requirement-row">
+                    <span>2. Pass chapter quiz</span>
+                    {% if previous_state.quiz_passed %}
+                        <strong class="requirement-done">✓ {{ previous_state.best_quiz_percentage }}%</strong>
+                    {% else %}
+                        <strong>&ge; {{ pass_threshold }}% Required</strong>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="locked-actions">
+                {% if not previous_state.lesson_completed %}
+                    <div class="locked-divider"><span>guided path or quiz pass</span></div>
+                    <p style="font-size: 0.86rem;">
+                        Read the lesson and mark it complete, or score at least <strong>{{ pass_threshold }}%</strong> on the quiz.
+                    </p>
+                    <a href="{% url 'courses:chapter_review' prev_chapter.pk %}" class="btn btn-secondary">
+                        Review Chapter {{ prev_chapter.order }}
+                    </a>
+                {% endif %}
+
+                {% if prev_chapter.quiz %}
+                    <a href="{% url 'courses:chapter_quiz' prev_chapter.pk %}" class="btn btn-primary btn-chunky">
+                        ⚡ Take Chapter {{ prev_chapter.order }} Quiz (&ge; {{ pass_threshold }}%) &rarr;
+                    </a>
+                {% endif %}
+
+                <a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-ghost">
+                    &larr; Back to Learning Path
+                </a>
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

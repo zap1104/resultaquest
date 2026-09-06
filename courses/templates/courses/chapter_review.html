@@ -1,5 +1,5 @@
 {% extends 'courses/base.html' %}
-{% load static quest_extras %}
+{% load static %}
 
 {% block title %}{{ chapter.title }} | Review{% endblock %}
 
@@ -60,13 +60,21 @@
     .lesson-preview-card { min-width: 0; padding: 28px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
     .lesson-preview-label { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; padding: 5px 11px; border-radius: 999px; background: rgba(0, 194, 168, 0.11); color: var(--accent); font-size: 0.74rem; font-weight: 800; }
     .lesson-preview { position: relative; max-height: 165px; margin-bottom: 20px; overflow: hidden; color: var(--ink); }
-    .lesson-preview p, .lesson-preview ul, .lesson-preview ol { margin: 0 0 10px; font-size: 1.04rem; line-height: 1.7; }
-    .lesson-preview ul, .lesson-preview ol { padding-left: 20px; }
+    .lesson-preview p { margin: 0 0 10px; font-size: 1.02rem; line-height: 1.65; color: var(--muted); }
     .lesson-preview-fade { position: absolute; inset: auto 0 0; height: 60px; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--surface)); }
 
     .lesson-actions { display: grid; gap: 11px; }
     .lesson-actions .btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; text-align: center; padding-block: 12px; font-size: 0.98rem; }
-    .lesson-complete-btn.is-complete, .lesson-complete-btn:disabled { cursor: default; }
+
+    .lesson-complete-btn:disabled:not(.is-complete) {
+        opacity: 0.45;
+        cursor: not-allowed !important;
+        filter: grayscale(0.5);
+        border-color: var(--border);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--muted);
+    }
+    .lesson-complete-btn.is-complete { cursor: default; }
 
     .lesson-activities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .lesson-activity { min-width: 0; min-height: 86px; display: flex; align-items: center; gap: 16px; padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--ink); text-decoration: none; transition: transform 0.16s ease, border-color 0.16s ease; }
@@ -107,67 +115,38 @@
     .reader-content::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border); }
     .reader-content::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
-    /* 5. CRAM WIDGET STYLES (D-4) */
-    .cram-overview-card {
-        background: rgba(108, 92, 231, 0.08);
-        border: 1px solid rgba(108, 92, 231, 0.25);
-        border-radius: 14px;
-        padding: 18px 20px;
-        margin-bottom: 24px;
-    }
-    .cram-badge {
-        display: inline-block;
-        font-size: 0.72rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--primary);
-        margin-bottom: 6px;
-    }
+    /* 5. CRAM WIDGET STYLES */
+    .cram-overview-card { background: rgba(108, 92, 231, 0.08); border: 1px solid rgba(108, 92, 231, 0.25); border-radius: 14px; padding: 18px 20px; margin-bottom: 24px; }
+    .cram-badge { display: inline-block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary); margin-bottom: 6px; }
     .cram-lead { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin: 0; color: var(--ink); }
-
-    .analogy-callout {
-        display: flex;
-        gap: 14px;
-        align-items: flex-start;
-        background: rgba(0, 194, 168, 0.08);
-        border-left: 4px solid var(--accent);
-        border-radius: 8px;
-        padding: 14px 18px;
-        margin-bottom: 28px;
-    }
-    .analogy-icon { font-size: 1.4rem; line-height: 1; }
-    .analogy-callout p { margin: 4px 0 0; font-size: 0.95rem; color: var(--ink); line-height: 1.5; }
 
     .cram-section { margin-bottom: 32px; }
     .cram-section-title { font-size: 1.15rem; font-weight: 800; margin: 0 0 14px; color: var(--ink); }
 
-    .key-terms-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    @media (max-width: 600px) { .key-terms-grid { grid-template-columns: 1fr; } }
-    .key-term-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 14px 16px;
-    }
-    .key-term-title { display: block; font-weight: 700; font-size: 0.96rem; color: var(--accent); margin-bottom: 4px; }
-    .key-term-def { margin: 0; font-size: 0.88rem; line-height: 1.5; color: var(--muted); }
+    .cram-facts-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+    .cram-facts-list li { position: relative; padding-left: 24px; font-size: 0.94rem; line-height: 1.6; color: var(--ink); }
+    .cram-facts-list li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 800; }
+
+    .section-block { padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .section-heading { font-size: 1.22rem; font-weight: 800; color: var(--ink); margin: 0 0 8px; }
+    .section-intro { font-size: 0.95rem; color: var(--muted); line-height: 1.55; margin: 0 0 16px; }
+
+    .concept-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; }
+    .concept-term { font-size: 1.05rem; font-weight: 800; color: var(--accent); }
+    .concept-formal { margin: 6px 0 8px; font-size: 0.92rem; line-height: 1.5; color: var(--ink); }
+    .concept-simple { background: rgba(108, 92, 231, 0.07); border-left: 3px solid var(--primary); padding: 8px 12px; border-radius: 6px; font-size: 0.88rem; line-height: 1.45; margin-bottom: 8px; }
+    .concept-analogy { font-size: 0.86rem; color: var(--muted); }
 
     .comparison-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
     .cram-comparison-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; }
     .cram-comparison-table th, .cram-comparison-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
     .cram-comparison-table th { background: rgba(255, 255, 255, 0.03); font-weight: 800; text-transform: uppercase; font-size: 0.75rem; }
 
-    .timeline-track { display: flex; flex-direction: column; gap: 16px; border-left: 2px solid var(--border); padding-left: 18px; margin-left: 8px; }
-    .timeline-node { position: relative; }
-    .timeline-node::before { content: ""; position: absolute; left: -24px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
-    .timeline-period { font-size: 0.74rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; }
-    .timeline-copy strong { display: block; font-size: 0.96rem; color: var(--ink); margin: 2px 0; }
-    .timeline-copy p { margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
-
-    .cram-facts-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-    .cram-facts-list li { position: relative; padding-left: 24px; font-size: 0.94rem; line-height: 1.6; color: var(--ink); }
-    .cram-facts-list li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 800; }
+    .enum-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; }
+    .enum-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .enum-cue { font-size: 0.75rem; font-weight: 800; background: rgba(0, 194, 168, 0.12); color: var(--accent); padding: 2px 8px; border-radius: 6px; }
+    .enum-prompt { font-size: 0.88rem; color: var(--muted); margin: 0 0 10px; }
+    .enum-items { margin: 0; padding-left: 20px; font-size: 0.92rem; line-height: 1.55; }
 
     .confusions-grid { display: flex; flex-direction: column; gap: 12px; }
     .confusion-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
@@ -176,97 +155,10 @@
     .vs-divider { font-size: 0.74rem; text-transform: uppercase; color: var(--muted); font-weight: 800; }
     .confusion-diff { margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
 
-    /* Responsive */
     @media (max-width: 1050px) {
         .review-workspace.reader-open .lesson-hub-pane { display: none; }
         .review-workspace.reader-open .lesson-reader-pane { width: min(100%, 760px); }
     }
-    @media (prefers-reduced-motion: reduce) {
-        .review-workspace, .lesson-hub-pane, .lesson-reader-pane, .lesson-completed-chip { transition: none !important; }
-    }
-
-    .section-block {
-        padding-bottom: 24px;
-        border-bottom: 1px solid var(--border);
-    }
-    .section-heading {
-        font-size: 1.22rem;
-        font-weight: 800;
-        color: var(--ink);
-        margin: 0 0 8px;
-    }
-    .section-intro {
-        font-size: 0.95rem;
-        color: var(--muted);
-        line-height: 1.55;
-        margin: 0 0 16px;
-    }
-
-    .concept-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 16px 18px;
-        margin-bottom: 14px;
-    }
-    .concept-term {
-        font-size: 1.05rem;
-        font-weight: 800;
-        color: var(--accent);
-    }
-    .concept-formal {
-        margin: 6px 0 8px;
-        font-size: 0.92rem;
-        line-height: 1.5;
-        color: var(--ink);
-    }
-    .concept-simple {
-        background: rgba(108, 92, 231, 0.07);
-        border-left: 3px solid var(--primary);
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 0.88rem;
-        line-height: 1.45;
-        margin-bottom: 8px;
-    }
-    .concept-analogy {
-        font-size: 0.86rem;
-        color: var(--muted);
-    }
-
-    .enum-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 16px 18px;
-        margin-bottom: 12px;
-    }
-    .enum-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 6px;
-    }
-    .enum-cue {
-        font-size: 0.75rem;
-        font-weight: 800;
-        background: rgba(0, 194, 168, 0.12);
-        color: var(--accent);
-        padding: 2px 8px;
-        border-radius: 6px;
-    }
-    .enum-prompt {
-        font-size: 0.88rem;
-        color: var(--muted);
-        margin: 0 0 10px;
-    }
-    .enum-items {
-        margin: 0;
-        padding-left: 20px;
-        font-size: 0.92rem;
-        line-height: 1.55;
-    }
-
 </style>
 
 <div class="review-workspace" id="review-workspace">
@@ -280,11 +172,11 @@
 
             <div class="lesson-progress">
                 <div class="lesson-progress-labels">
-                    <span>Lesson {{ chapter.order }} of {{ chapter.course.chapters.count }}</span>
-                    <span>{% widthratio chapter.order chapter.course.chapters.count 100 %}% complete</span>
+                    <span>Lesson {{ chapter.order }} of {{ total_chapters }}</span>
+                    <span>Course Progress: {{ course_progress_pct }}%</span>
                 </div>
-                <div class="lesson-progress-track" role="progressbar" aria-label="Lesson progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{% widthratio chapter.order chapter.course.chapters.count 100 %}">
-                    <div class="lesson-progress-fill" style="width: {% widthratio chapter.order chapter.course.chapters.count 100 %}%;"></div>
+                <div class="lesson-progress-track" role="progressbar" aria-label="Course progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ course_progress_pct }}">
+                    <div class="lesson-progress-fill" data-progress="{{ course_progress_pct }}"></div>
                 </div>
             </div>
 
@@ -300,24 +192,34 @@
             </header>
 
             <article class="lesson-preview-card">
-                <!-- D-2 Label updated -->
                 <span class="lesson-preview-label">Quick Review</span>
                 <div class="lesson-preview">
-                    {% if chapter.source_data.overview %}
-                        <p>{{ chapter.source_data.overview }}</p>
-                    {% else %}
-                        {{ chapter.review_content|structured }}
-                    {% endif %}
+                    <p>{{ chapter.source_data.overview|default:chapter.review_content }}</p>
                     <div class="lesson-preview-fade" aria-hidden="true"></div>
                 </div>
                 <div class="lesson-actions">
-                    <!-- D-2 Label updated -->
                     <button type="button" id="read-full-lesson-btn" class="btn btn-secondary" aria-controls="lesson-reader-pane" aria-expanded="false">
                         <span>Chapter Review</span>
                         <span aria-hidden="true">&nearr;</span>
                     </button>
-                    <button type="button" id="mark-complete-btn" class="btn btn-primary btn-chunky lesson-complete-btn {% if is_completed %}is-complete{% endif %}" data-chapter-id="{{ chapter.pk }}" {% if is_completed %}disabled{% endif %}>
-                        {% if is_completed %}Completed ✓{% else %}Mark Lesson Complete (+15 XP){% endif %}
+                    <!-- Data attributes cleanly store server variables to prevent JS parser errors -->
+                    <button
+                        type="button"
+                        id="mark-complete-btn"
+                        class="btn btn-primary btn-chunky lesson-complete-btn {% if is_completed %}is-complete{% endif %}"
+                        data-chapter-id="{{ chapter.pk }}"
+                        data-has-read="{{ has_read_to_end|yesno:'true,false' }}"
+                        data-reading-url="{% url 'courses:record_chapter_reading' chapter.pk %}"
+                        data-complete-url="{% url 'courses:complete_chapter' chapter.pk %}"
+                        {% if not is_completed and not has_read_to_end %}disabled{% endif %}
+                    >
+                        {% if is_completed %}
+                            Completed ✓
+                        {% elif has_read_to_end %}
+                            Mark Lesson Complete (+15 XP)
+                        {% else %}
+                            Review Lesson to Unlock (+15 XP)
+                        {% endif %}
                     </button>
                 </div>
             </article>
@@ -353,11 +255,10 @@
         </div>
     </section>
 
-    <!-- PANE 2: CHAPTER REVIEW READER (D-2 Labels updated) -->
+    <!-- PANE 2: CHAPTER REVIEW READER -->
     <aside class="lesson-reader-pane" id="lesson-reader-pane" aria-hidden="true" aria-label="Chapter review reader">
         <header class="reader-header">
             <div class="reader-heading">
-                <!-- D-2 Label updated -->
                 <small>Chapter Review</small>
                 <h2>{{ chapter.title }}</h2>
             </div>
@@ -370,7 +271,7 @@
                     <!-- Header & Focus -->
                     <div class="cram-overview-card">
                         <span class="cram-badge">{{ chapter.source_data.week_label|default:"Chapter Focus" }}</span>
-                        <p class="cram-lead">{{ chapter.source_data.focus }}</p>
+                        <p class="cram-lead">{{ chapter.source_data.focus|default:chapter.source_data.overview }}</p>
                     </div>
 
                     <!-- Learning Objectives -->
@@ -385,7 +286,7 @@
                         </div>
                     {% endif %}
 
-                    <!-- Numbered Sections Flow -->
+                    <!-- Sections Flow -->
                     {% for section in chapter.source_data.sections %}
                         <div class="cram-section section-block">
                             <h3 class="section-heading">{{ forloop.counter }}. {{ section.title }}</h3>
@@ -393,7 +294,6 @@
                                 <p class="section-intro">{{ section.introduction }}</p>
                             {% endif %}
 
-                            <!-- Section Concepts -->
                             {% for concept in section.concepts %}
                                 <div class="concept-card">
                                     <div class="concept-header">
@@ -411,7 +311,6 @@
                                 </div>
                             {% endfor %}
 
-                            <!-- Section Key Points -->
                             {% if section.key_points %}
                                 <ul class="cram-facts-list" style="margin-top: 14px;">
                                     {% for pt in section.key_points %}
@@ -452,7 +351,7 @@
                         {% endfor %}
                     {% endif %}
 
-                    <!-- Enumerations -->
+                    <!-- High-Yield Enumerations -->
                     {% if chapter.source_data.enumerations %}
                         <div class="cram-section">
                             <h3 class="cram-section-title">📋 High-Yield Enumerations</h3>
@@ -475,7 +374,7 @@
                         </div>
                     {% endif %}
 
-                    <!-- Common Confusions / Traps -->
+                    <!-- Common Traps -->
                     {% if chapter.source_data.common_confusions %}
                         <div class="cram-section">
                             <h3 class="cram-section-title">⚠️ Common Exam Traps</h3>
@@ -494,7 +393,7 @@
                         </div>
                     {% endif %}
 
-                    <!-- Key Takeaways -->
+                    <!-- Takeaways -->
                     {% if chapter.source_data.key_takeaways %}
                         <div class="cram-section">
                             <h3 class="cram-section-title">📌 Key Takeaways</h3>
@@ -505,10 +404,8 @@
                             </ul>
                         </div>
                     {% endif %}
-
                 {% else %}
-                    <!-- Legacy Fallback -->
-                    {{ chapter.review_content|linebreaks }}
+                    <p>{{ chapter.review_content|linebreaks }}</p>
                 {% endif %}
             </article>
         </div>
@@ -524,11 +421,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeReaderBtn = document.getElementById('close-reader-btn');
     const completeBtn = document.getElementById('mark-complete-btn');
 
+    // Clean DOM-based state lookup (No raw template tags inside JS logic)
+    let hasReadToEnd = (completeBtn && completeBtn.dataset.hasRead === 'true') ||
+                       (completeBtn && completeBtn.classList.contains('is-complete'));
+
+    // Fill progress bar width
+    document.querySelectorAll('[data-progress]').forEach(el => {
+        el.style.width = el.getAttribute('data-progress') + '%';
+    });
+
+    function getCookie(name) {
+        const parts = (`; ${document.cookie}`).split(`; ${name}=`);
+        return parts.length === 2 ? parts.pop().split(';').shift() : '';
+    }
+
+    async function recordReadingCompletion() {
+        if (!completeBtn || !completeBtn.dataset.readingUrl) return;
+        const response = await fetch(completeBtn.dataset.readingUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        if (!response.ok) throw new Error('Unable to record reading progress');
+        return response.json();
+    }
+
+    async function checkReadingProgress() {
+        if (hasReadToEnd || !readerContent || !completeBtn) return;
+
+        const distanceFromBottom = readerContent.scrollHeight - readerContent.scrollTop - readerContent.clientHeight;
+        if (distanceFromBottom <= 40) {
+            try {
+                await recordReadingCompletion();
+                hasReadToEnd = true;
+                completeBtn.disabled = false;
+                completeBtn.textContent = 'Mark Lesson Complete (+15 XP)';
+            } catch (err) {
+                console.error('Failed to sync reading status:', err);
+            }
+        }
+    }
+
+    if (readerContent) {
+        readerContent.addEventListener('scroll', checkReadingProgress, { passive: true });
+    }
+
     function openReader() {
         workspace.classList.add('reader-open');
         reader.setAttribute('aria-hidden', 'false');
         openReaderBtn.setAttribute('aria-expanded', 'true');
-        window.requestAnimationFrame(() => closeReaderBtn.focus());
+        window.requestAnimationFrame(() => {
+            closeReaderBtn.focus();
+            checkReadingProgress();
+        });
     }
 
     function closeReader() {
@@ -548,20 +495,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape' && workspace.classList.contains('reader-open')) closeReader();
     });
 
-    function getCookie(name) {
-        const parts = (`; ${document.cookie}`).split(`; ${name}=`);
-        return parts.length === 2 ? parts.pop().split(';').shift() : '';
-    }
-
-    if (!completeBtn || completeBtn.disabled) return;
+    if (!completeBtn) return;
 
     completeBtn.addEventListener('click', async () => {
+        if (completeBtn.disabled || completeBtn.classList.contains('is-complete')) return;
+
         const originalText = completeBtn.textContent.trim();
         completeBtn.disabled = true;
         completeBtn.textContent = 'Saving...';
 
         try {
-            const response = await fetch(`/chapters/${completeBtn.dataset.chapterId}/complete/`, {
+            const completeUrl = completeBtn.dataset.completeUrl || `/chapters/${completeBtn.dataset.chapterId}/complete/`;
+            const response = await fetch(completeUrl, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),
@@ -569,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
             await response.json();
 
             completeBtn.textContent = 'Completed ✓';

@@ -22,6 +22,9 @@
         align-items: start;
         width: 100%;
         margin: 0 auto;
+        padding: 24px 28px 56px;
+        box-sizing: border-box;
+        overflow: visible;
     }
 
     /* Main Productivity Hub (Hero Banner + Primary Grid) */
@@ -35,9 +38,17 @@
     /* 2. MATCH AD RAIL STICKY OFFSET */
     .dashboard-ad-rail {
         position: sticky;
-        top: 32px;
+        top: 96px;
         width: 240px;
         flex-shrink: 0;
+        align-self: start;
+        max-height: calc(100dvh - 124px);
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 0 4px 16px;
+        box-sizing: border-box;
+        overscroll-behavior: contain;
+        z-index: 5;
     }
 
     /* ================= 3. 9:16 SPONSORED PLACEMENT CARD ================= */
@@ -162,7 +173,9 @@
     .sponsor-modal-backdrop {
         position: fixed; inset: 0; background: rgba(10, 14, 26, 0.84);
         backdrop-filter: blur(8px); z-index: 9999;
-        display: flex; align-items: center; justify-content: center; padding: 20px;
+        display: flex; align-items: flex-start; justify-content: center;
+        padding: max(96px, calc(env(safe-area-inset-top) + 76px)) 24px 48px;
+        box-sizing: border-box; overflow-y: auto;
     }
     .sponsor-modal-backdrop[hidden] { display: none; }
 
@@ -203,6 +216,96 @@
         font-size: 0.85rem;
         color: var(--muted);
         line-height: 1.6;
+    }
+    .plan-comparison-card { max-width: 760px; max-height: calc(100vh - 144px); overflow-y: auto; padding: 36px 26px 28px; }
+    .plan-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 14px; text-align: left; margin: 16px 0; }
+    .plan-card { min-width: 0; min-height: 308px; display: flex; flex-direction: column; padding: 20px 16px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
+    .plan-card-content { display: flex; flex: 1; flex-direction: column; }
+    .plan-card-plus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(108, 92, 231, .12); }
+    .plan-card h4 { margin: 6px 0; color: var(--ink); font-size: 1.05rem; }
+    .plan-card p { margin-bottom: 10px; }
+    .plan-card-action { margin-top: auto; padding-top: 12px; }
+    .plan-card-btn { width: 100%; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+    .plan-matrix { display: grid; gap: 7px; text-align: left; padding: 14px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; }
+    .plan-matrix div { display: flex; justify-content: space-between; gap: 16px; padding-top: 7px; border-top: 1px solid var(--border); color: var(--muted); font-size: .82rem; }
+    .plan-matrix b { color: var(--ink); }
+    .dashboard-ad-rail::-webkit-scrollbar { width: 5px; }
+    .dashboard-ad-rail::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
+    .dashboard-ad-rail:hover::-webkit-scrollbar-thumb { background: var(--border); }
+    .topbar { position: relative; z-index: 100; }
+    @media (max-width: 1280px) { .dashboard-page-shell { padding-inline: 20px; } }
+    @media (max-width: 680px) {
+        .sponsor-modal-backdrop { padding: max(76px, calc(env(safe-area-inset-top) + 60px)) 14px 28px; }
+        .plan-comparison-card { max-height: calc(100vh - 112px); padding: 28px 16px 22px; }
+        .plan-cards { grid-template-columns: 1fr; }
+        .plan-card { min-height: auto; }
+        .plan-card-action { margin-top: 18px; }
+    }
+
+    /* Final modal override: center the dialog and keep desktop cards scrollbar-free. */
+    html.modal-open, body.modal-open { overflow: hidden !important; }
+    .sponsor-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        width: 100%;
+        height: 100dvh;
+        padding: 28px 24px;
+        box-sizing: border-box;
+        overflow: hidden;
+        background: rgba(5, 10, 22, 0.88);
+        backdrop-filter: blur(9px);
+    }
+    .sponsor-modal-backdrop[hidden] { display: none !important; }
+    .sponsor-modal-card {
+        width: min(100%, 420px);
+        margin: 0;
+        padding: 30px 26px 26px;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    .sponsor-modal-card.plan-comparison-card {
+        width: min(100%, 760px);
+        max-height: calc(100dvh - 56px);
+        padding: 30px 26px 24px;
+    }
+    .plan-comparison-card .modal-icon-wrap { margin: 0 0 6px; font-size: 2rem; line-height: 1; }
+    .plan-comparison-card > .modal-eyebrow { margin-bottom: 4px; }
+    .plan-comparison-card > h3 { margin: 4px 0 6px; font-size: 1.25rem; }
+    .plan-comparison-card > p { margin: 0 0 16px; font-size: .86rem; line-height: 1.45; }
+    .plan-cards { margin-top: 0; }
+    .plan-card { min-height: 300px; padding: 18px 16px 14px; box-sizing: border-box; }
+    .plan-card h4 { margin: 6px 0; }
+    .plan-card p { margin: 0 0 8px; font-size: .82rem; line-height: 1.4; }
+    .plan-card .modal-feature-list { margin: 8px 0 12px; font-size: .78rem; line-height: 1.5; }
+    .plan-card-action { margin-top: auto; padding-top: 10px; }
+    .plan-card-btn { width: 100%; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+    .plan-matrix { margin-top: 14px; padding: 12px 14px; }
+    .plan-matrix > strong { display: block; margin-bottom: 5px; font-size: .9rem; }
+    .plan-matrix > div { padding: 6px 0; font-size: .75rem; }
+    .plan-comparison-card > .modal-callout { margin: 12px 0 10px; padding: 9px 12px; font-size: .7rem; line-height: 1.4; }
+    #close-plus-modal-btn { min-height: 38px; margin: 0; padding: 8px 14px; }
+    @media (max-height: 850px) and (min-width: 681px) {
+        .sponsor-modal-backdrop { padding: 18px 20px; }
+        .sponsor-modal-card.plan-comparison-card { max-height: calc(100dvh - 36px); padding: 22px 22px 18px; }
+        .plan-comparison-card .modal-icon-wrap { font-size: 1.55rem; margin-bottom: 3px; }
+        .plan-comparison-card > h3 { margin: 2px 0 4px; font-size: 1.12rem; }
+        .plan-comparison-card > p { margin-bottom: 11px; font-size: .78rem; }
+        .plan-card { min-height: 250px; padding: 14px 14px 12px; }
+        .plan-card .modal-feature-list { margin: 6px 0 8px; font-size: .72rem; line-height: 1.4; }
+        .plan-matrix { margin-top: 10px; padding: 9px 12px; }
+        .plan-matrix > div { padding: 4px 0; }
+        .plan-comparison-card > .modal-callout { margin: 9px 0 7px; padding: 7px 10px; }
+    }
+    @media (max-width: 680px) {
+        .sponsor-modal-backdrop { display: block; padding: 20px 14px; overflow-x: hidden; overflow-y: auto; }
+        .sponsor-modal-card, .sponsor-modal-card.plan-comparison-card { width: 100%; max-height: none; margin: 0 auto; overflow: visible; }
+        .plan-comparison-card { padding: 28px 16px 22px; }
+        .plan-cards { grid-template-columns: 1fr; }
+        .plan-card { min-height: auto; }
+        .plan-card-action { margin-top: 18px; }
     }
 
     /* ================= 5. ZERO-COURSE ONBOARDING HERO ================= */
@@ -377,20 +480,6 @@
                         {% endfor %}
                     </div>
 
-                    <div class="section-header">
-                        <h2>Active Courses</h2>
-                        <a href="{% url 'courses:course_create' %}" class="btn btn-secondary btn-sm">+ New Course</a>
-                    </div>
-
-                    <div class="card-grid">
-                        {% for course in courses %}
-                            <a class="card course-card" href="{% url 'courses:course_detail' course.pk %}">
-                                <h3>{{ course.title }}</h3>
-                                <p>{{ course.description|default:"AI-generated learning path based on your uploaded materials."|truncatechars:65 }}</p>
-                                <span class="chip chip-accent">{{ course.chapters.count }} Chapter{{ course.chapters.count|pluralize }}</span>
-                            </a>
-                        {% endfor %}
-                    </div>
                 </div>
 
                 <!-- Internal Dashboard Sidebar (Daily Goals & Achievements ONLY) -->
@@ -476,7 +565,9 @@
 
         <!-- 2. EXTERNAL RIGHT SPONSOR RAIL (Completely outside the hub) -->
         <aside class="dashboard-ad-rail">
-            {% include 'courses/components/mock_sponsor_card.html' %}
+            {% if profile.plan == 'free' %}
+                {% include 'courses/components/mock_sponsor_card.html' %}
+            {% endif %}
         </aside>
     </div>
 

@@ -3,7 +3,7 @@ from django.test import TestCase
 
 from courses.models import Chapter, Course, Quiz, Question, Choice
 from courses.schemas import GeneratedJourney
-from courses.services import _generate_mock_journey
+from courses.services import _generate_mock_journey, get_assessment_mix
 from courses.views import _build_journey
 
 
@@ -39,6 +39,30 @@ class MockJourneySchemaTests(TestCase):
 
         self.assertTrue(questions)
         self.assertTrue(all(q.explanation.strip() for q in questions))
+
+    def test_all_format_mock_has_controlled_mixed_distribution(self):
+        result = _generate_mock_journey(
+            self.course,
+            ["multiple_choice", "identification", "enumeration"],
+        )
+        validated = GeneratedJourney.model_validate(result)
+        questions = validated.chapters[0].quiz.questions
+        counts = {
+            question_type: sum(q.type == question_type for q in questions)
+            for question_type in get_assessment_mix(
+                ["multiple_choice", "identification", "enumeration"]
+            )
+        }
+
+        self.assertEqual(len(questions), 10)
+        self.assertEqual(counts, {
+            "multiple_choice": 3,
+            "true_false": 2,
+            "identification": 3,
+            "enumeration": 2,
+        })
+        self.assertEqual(questions[5].accepted_answers, ["Zachman Framework", "Zachman"])
+        self.assertEqual(len(questions[-1].expected_items), 3)
 
 
 class BuildJourneyTransactionTests(TestCase):
