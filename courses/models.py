@@ -104,30 +104,37 @@ class Quiz(models.Model):
         return self.title or f'Quiz for {self.chapter.title}'
 
 
+# courses/models.py
 class Question(models.Model):
-    QUESTION_TYPES = [
-        ('multiple_choice', 'Multiple Choice'),
-        ('true_false', 'True or False'),
+    QUESTION_TYPE_CHOICES = [
+        ("multiple_choice", "Multiple Choice"),
+        ("true_false", "True or False"),
+        ("identification", "Identification"),
+        ("enumeration", "Enumeration"),
     ]
 
-    quiz = models.ForeignKey(Quiz, related_name='questions', on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name="questions")
     order = models.PositiveIntegerField(default=1)
     question_type = models.CharField(
-        max_length=20,
-        choices=QUESTION_TYPES,
-        default='multiple_choice'
+        max_length=30,
+        choices=QUESTION_TYPE_CHOICES,
+        default="multiple_choice",
     )
-    text = models.CharField(max_length=500)
-    explanation = models.TextField(blank=True, default='')
+    text = models.TextField()
+    explanation = models.TextField(blank=True, default="")
+    answer_data = models.JSONField(default=dict, blank=True)
 
     class Meta:
-        ordering = ['order']
+        ordering = ["order"]
 
     def __str__(self):
-        return f"[{self.get_question_type_display()}] {self.text}"
+        return f"Q{self.order} ({self.question_type}): {self.text[:40]}"
 
 
 class Choice(models.Model):
+    """Only used for question_type='multiple_choice'. Identification and
+    Enumeration questions have no related Choice rows.
+    """
     question = models.ForeignKey(Question, related_name='choices', on_delete=models.CASCADE)
     text = models.CharField(max_length=300)
     is_correct = models.BooleanField(default=False)

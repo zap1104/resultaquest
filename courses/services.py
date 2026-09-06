@@ -5,6 +5,8 @@ import pdfplumber
 from dotenv import load_dotenv, find_dotenv
 from pptx import Presentation
 from google import genai
+from courses.schemas import GeneratedJourney
+
 from google.genai import types
 
 load_dotenv(find_dotenv())
@@ -91,13 +93,14 @@ CONTENT DE-DUPLICATION (ZERO-BLOAT) RULES:
 """
 
 QUIZ_RULES = """
-QUIZ COMPOSITION MANDATES (STRICT ENFORCEMENT):
-1. You MUST generate between 8 and 10 questions for EVERY chapter. Generating only 3 questions is STRICTLY FORBIDDEN.
-2. Question Mix: Exactly 6 to 7 Multiple Choice questions and 2 to 3 True/False questions per chapter.
-3. Multiple-choice questions MUST have exactly 4 plausible choices and exactly 1 correct answer.
-4. True/False questions MUST have exactly 2 choices ("True" and "False") and exactly 1 correct answer.
-5. Every single question must have an educational "explanation" (2-3 sentences) defining why the correct answer is right. For False statements, explicitly explain what makes the premise false.
-6. Every question within a chapter must test a distinct concept.
+INTERACTIVE QUIZ COMPOSITION MANDATES:
+1. You MUST generate between 8 and 10 questions per chapter.
+2. Only two interactive question types are supported: "multiple_choice" and "true_false".
+3. Question Distribution: Exactly 6 to 7 Multiple Choice questions and 2 to 3 True/False questions.
+4. Multiple-choice questions MUST have exactly 4 choices and exactly 1 correct answer.
+5. True/False questions MUST have exactly 2 choices ("True" and "False") and exactly 1 correct answer.
+6. Do NOT output identification, text-entry, or essay items inside quiz.questions. If the student requested Identification or Enumeration focus, emphasize those formats inside "key_terms", "enumerations", and "sections" instead.
+7. Every question must include a 2-3 sentence educational "explanation".
 """
 
 SOURCE_GROUNDING_RULES = """
@@ -352,35 +355,22 @@ def generate_course_journey(course, uploaded_file=None, study_goal="balanced_rev
 
 
 def _validate_response(raw_json):
+    # 1. Parse string to raw Python dict
     data = json.loads(raw_json)
-    if not isinstance(data, dict) or "chapters" not in data or not data["chapters"]:
-        raise ValueError("Invalid curriculum structure.")
 
-    for ch_idx, chapter in enumerate(data["chapters"], start=1):
-        questions = chapter.get("quiz", {}).get("questions", [])
-        # Enforce that Gemini must generate at least 6 to 12 questions
-        if not (6 <= len(questions) <= 15):
+    # 2. Enforce strict Pydantic contract (types, choices count, 1 correct choice, no duplicate questions)
+    validated_journey = GeneratedJourney.model_validate(data)
+
+    # 3. Application-level check: chapter question quantity
+    for ch_idx, chapter in enumerate(validated_journey.chapters, start=1):
+        question_count = len(chapter.quiz.questions)
+        if not (6 <= question_count <= 15):
             raise ValueError(
-                f"Chapter {ch_idx} has {len(questions)} questions; expected between 8 and 10 questions."
+                f"Chapter {ch_idx} has {question_count} questions; expected between 8 and 10 questions."
             )
 
-        for q_idx, q in enumerate(questions, start=1):
-            q_type = q.get("type", "multiple_choice")
-            choices = q.get("choices", [])
-            expected_choices = 2 if q_type == "true_false" else 4
-
-            if len(choices) != expected_choices:
-                raise ValueError(
-                    f"Chapter {ch_idx} Q{q_idx} ({q_type}) has {len(choices)} choices; expected {expected_choices}."
-                )
-
-            correct_count = sum(1 for c in choices if c.get("is_correct") is True)
-            if correct_count != 1:
-                raise ValueError(
-                    f"Chapter {ch_idx} Q{q_idx} must have exactly 1 correct choice (got {correct_count})."
-                )
-
-    return data
+    # 4. Return clean, validated dict for downstream consumers
+    return validated_journey.model_dump()
 
 
 def _generate_mock_journey(title):
