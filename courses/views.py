@@ -43,6 +43,18 @@ def normalize_text_answer(value):
     return value.strip()
 
 
+def calculate_quiz_xp(percentage):
+    if percentage >= 100:
+        return 60
+    if percentage >= 85:
+        return 45
+    if percentage >= 70:
+        return 35
+    if percentage >= 50:
+        return 20
+    return 10
+
+
 def get_reading_session_key(chapter):
     return f"chapter_read_to_end:{chapter.pk}"
 
@@ -542,16 +554,18 @@ def chapter_quiz(request, pk):
 
 def _grade_question(question, submitted_answer):
     max_points = question.max_points()
+    if not isinstance(submitted_answer, dict):
+        submitted_answer = {}
 
     # Choice-based grading
     if question.question_type in {"multiple_choice", "true_false"}:
         chosen_choice_id = submitted_answer.get("choice_id") if submitted_answer else None
         correct_choice = next((c for c in question.choices.all() if c.is_correct), None)
-        is_correct = (
-            chosen_choice_id is not None
-            and correct_choice is not None
-            and int(chosen_choice_id) == correct_choice.id
-        )
+        try:
+            chosen_choice_id = int(chosen_choice_id)
+        except (TypeError, ValueError):
+            chosen_choice_id = None
+        is_correct = chosen_choice_id is not None and correct_choice is not None and chosen_choice_id == correct_choice.id
         return (
             1 if is_correct else 0,
             max_points,
@@ -565,6 +579,8 @@ def _grade_question(question, submitted_answer):
     # Identification grading
     if question.question_type == "identification":
         submitted_text = (submitted_answer or {}).get("text", "")
+        if not isinstance(submitted_text, str):
+            submitted_text = ""
         accepted_answers = question.answer_data.get("accepted_answers", [])
         normalized_submitted = normalize_text_answer(submitted_text)
         is_correct = any(
@@ -583,6 +599,8 @@ def _grade_question(question, submitted_answer):
     # Enumeration grading
     if question.question_type == "enumeration":
         submitted_items = (submitted_answer or {}).get("items", [])
+        if not isinstance(submitted_items, list):
+            submitted_items = []
         expected_items = list(question.answer_data.get("expected_items", []))
         order_matters = bool(question.answer_data.get("order_matters", False))
 
@@ -685,6 +703,8 @@ def submit_quiz(request, pk):
     try:
         payload = json.loads(request.body)
         submitted_answers = payload.get("answers", {})
+        if not isinstance(submitted_answers, dict):
+            submitted_answers = {}
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON."}, status=400)
 
@@ -708,9 +728,7 @@ def submit_quiz(request, pk):
         })
 
     percentage = round(total_earned / max(total_maximum, 1) * 100)
-    xp_earned = total_earned * 10
-    if total_maximum > 0 and total_earned == total_maximum:
-        xp_earned += 20
+    xp_earned = calculate_quiz_xp(percentage)
 
     QuizAttempt.objects.create(
         user=request.user,

@@ -12,14 +12,54 @@ from pydantic import BaseModel, Field, model_validator
 # --------------------------------------------------
 StudyGoal = Literal["quick_cram", "balanced_review", "deep_learning"]
 AssessmentFormat = Literal[
-    "multiple_choice", "identification", "enumeration", "essay", "not_sure"
+    "multiple_choice", "identification", "enumeration"
 ]
+
+ASSESSMENT_MIXES = {
+    frozenset({"multiple_choice"}): {
+        "multiple_choice": 7, "true_false": 3, "identification": 0, "enumeration": 0,
+    },
+    frozenset({"identification"}): {
+        "multiple_choice": 3, "true_false": 2, "identification": 5, "enumeration": 0,
+    },
+    frozenset({"enumeration"}): {
+        "multiple_choice": 3, "true_false": 2, "identification": 0, "enumeration": 5,
+    },
+    frozenset({"multiple_choice", "identification"}): {
+        "multiple_choice": 4, "true_false": 2, "identification": 4, "enumeration": 0,
+    },
+    frozenset({"multiple_choice", "enumeration"}): {
+        "multiple_choice": 4, "true_false": 2, "identification": 0, "enumeration": 4,
+    },
+    frozenset({"identification", "enumeration"}): {
+        "multiple_choice": 2, "true_false": 2, "identification": 3, "enumeration": 3,
+    },
+    frozenset({"multiple_choice", "identification", "enumeration"}): {
+        "multiple_choice": 3, "true_false": 2, "identification": 3, "enumeration": 2,
+    },
+}
+
+
+def get_assessment_mix(assessment_formats):
+    formats = frozenset(assessment_formats or ["multiple_choice"])
+    try:
+        return dict(ASSESSMENT_MIXES[formats])
+    except KeyError as error:
+        raise ValueError("Assessment formats must include one or more supported formats.") from error
 
 class GenerationPreferences(BaseModel):
     study_goal: StudyGoal = "quick_cram"
     assessment_formats: List[AssessmentFormat] = Field(
         default_factory=lambda: ["multiple_choice"]
     )
+
+    @model_validator(mode="after")
+    def validate_assessment_formats(self):
+        if not self.assessment_formats:
+            raise ValueError("Select at least one assessment format.")
+        if len(set(self.assessment_formats)) != len(self.assessment_formats):
+            raise ValueError("Assessment formats must be unique.")
+        return self
 
 class GenerationProfile(BaseModel):
     study_goal: StudyGoal
@@ -28,7 +68,9 @@ class GenerationProfile(BaseModel):
 # --------------------------------------------------
 # 2. QUIZ CONTRACT
 # --------------------------------------------------
-QuestionType = Literal["multiple_choice", "true_false"]
+QuestionType = Literal[
+    "multiple_choice", "true_false", "identification", "enumeration"
+]
 
 class GeneratedChoice(BaseModel):
     text: str = Field(min_length=1, max_length=300)
@@ -40,7 +82,10 @@ class GeneratedQuestion(BaseModel):
     difficulty: Optional[str] = "medium"
     text: str = Field(min_length=5, max_length=500)
     explanation: str = Field(min_length=10, max_length=800)
-    choices: List[GeneratedChoice]
+    choices: List[GeneratedChoice] = Field(default_factory=list)
+    accepted_answers: List[str] = Field(default_factory=list)
+    expected_items: List[dict] = Field(default_factory=list)
+    order_matters: bool = False
 
     @model_validator(mode="after")
     def validate_question_integrity(self):
@@ -61,19 +106,40 @@ class GeneratedQuestion(BaseModel):
                     f"Question {self.order} is true_false but choices are not ['True', 'False']."
                 )
 
-        # 2. Single Correct Choice Check
-        correct_count = sum(1 for c in self.choices if c.is_correct)
-        if correct_count != 1:
-            raise ValueError(
-                f"Question {self.order} must have exactly 1 correct choice; got {correct_count}."
-            )
+        if self.type in {"multiple_choice", "true_false"}:
+            correct_count = sum(1 for c in self.choices if c.is_correct)
+            if correct_count != 1:
+                raise ValueError(
+                    f"Question {self.order} must have exactly 1 correct choice; got {correct_count}."
+                )
 
-        # 3. Duplicate Choice Text Check (Fails test_tampered_duplicate_choice_text_is_rejected)
-        texts_lower = [c.text.strip().lower() for c in self.choices]
-        if len(texts_lower) != len(set(texts_lower)):
-            raise ValueError(
-                f"Question {self.order} has duplicate choice text."
-            )
+            texts_lower = [c.text.strip().lower() for c in self.choices]
+            if len(texts_lower) != len(set(texts_lower)):
+                raise ValueError(f"Question {self.order} has duplicate choice text.")
+        elif self.type == "identification":
+            if not self.accepted_answers:
+                raise ValueError(
+                    f"Question {self.order} (identification) requires an accepted answer."
+                )
+            if self.choices or self.expected_items:
+                raise ValueError(
+                    f"Question {self.order} (identification) cannot include choices or expected items."
+                )
+        elif self.type == "enumeration":
+            if len(self.expected_items) < 2:
+                raise ValueError(
+                    f"Question {self.order} (enumeration) requires at least 2 expected items."
+                )
+            if self.choices or self.accepted_answers:
+                raise ValueError(
+                    f"Question {self.order} (enumeration) cannot include choices or accepted answers."
+                )
+            for item in self.expected_items:
+                if not item.get("canonical"):
+                    raise ValueError(
+                        f"Question {self.order} has an enumeration item without a canonical answer."
+                    )
+                item.setdefault("accepted_variants", [])
 
         return self
 

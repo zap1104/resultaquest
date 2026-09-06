@@ -127,6 +127,11 @@ class Question(models.Model):
     class Meta:
         ordering = ["order"]
 
+    def max_points(self):
+        if self.question_type == "enumeration":
+            return len(self.answer_data.get("expected_items", []))
+        return 1
+
     def __str__(self):
         return f"Q{self.order} ({self.question_type}): {self.text[:40]}"
 

@@ -5,7 +5,7 @@ import pdfplumber
 from dotenv import load_dotenv, find_dotenv
 from pptx import Presentation
 from google import genai
-from courses.schemas import GeneratedJourney
+from courses.schemas import GeneratedJourney, get_assessment_mix
 
 from google.genai import types
 
@@ -59,15 +59,6 @@ ASSESSMENT_PROFILES = {
         "- Extract explicit named lists, categories, phases, matrices, and rule-sets from the source.\n"
         "- Provide clear prompts and memory cues (acronyms, initialisms, counts) for each list."
     ),
-    "essay": (
-        "ASSESSMENT TARGET: Architectural Analysis & Essay.\n"
-        "- Emphasize vertical impact analysis (e.g., how a technology layer change impacts the business layer).\n"
-        "- Highlight trade-offs (e.g., Monolith vs. Microservices tax, cost vs. velocity)."
-    ),
-    "not_sure": (
-        "ASSESSMENT TARGET: Balanced Assessment.\n"
-        "- Mix conceptual multiple-choice items, identification definitions, and enumeration lists."
-    ),
 }
 
 DOCUMENT_STRUCTURE_RULES = """
@@ -94,13 +85,12 @@ CONTENT DE-DUPLICATION (ZERO-BLOAT) RULES:
 
 QUIZ_RULES = """
 INTERACTIVE QUIZ COMPOSITION MANDATES:
-1. You MUST generate between 8 and 10 questions per chapter.
-2. Only two interactive question types are supported: "multiple_choice" and "true_false".
-3. Question Distribution: Exactly 6 to 7 Multiple Choice questions and 2 to 3 True/False questions.
-4. Multiple-choice questions MUST have exactly 4 choices and exactly 1 correct answer.
-5. True/False questions MUST have exactly 2 choices ("True" and "False") and exactly 1 correct answer.
-6. Do NOT output identification, text-entry, or essay items inside quiz.questions. If the student requested Identification or Enumeration focus, emphasize those formats inside "key_terms", "enumerations", and "sections" instead.
-7. Every question must include a 2-3 sentence educational "explanation".
+1. Generate exactly 10 questions per chapter using the required distribution below.
+2. Multiple-choice questions MUST have exactly 4 choices and exactly 1 correct answer.
+3. True/False questions MUST have exactly 2 choices ("True" and "False") and exactly 1 correct answer.
+4. Identification questions MUST have no choices and at least one accepted answer.
+5. Enumeration questions MUST have no choices, at least 2 expected items, and explicit order_matters metadata.
+6. Every question must include a 2-3 sentence educational "explanation".
 """
 
 SOURCE_GROUNDING_RULES = """
@@ -218,6 +208,26 @@ OUTPUT FORMAT: Output valid JSON matching this exact structure:
               {"text": "True", "is_correct": true},
               {"text": "False", "is_correct": false}
             ]
+                    },
+                    {
+                        "order": 3,
+                        "type": "identification",
+                        "text": "Identify the framework used to organize architecture artifacts.",
+                        "explanation": "The Zachman Framework organizes architecture artifacts across perspectives and concerns.",
+                        "accepted_answers": ["Zachman Framework", "Zachman"]
+                    },
+                    {
+                        "order": 4,
+                        "type": "enumeration",
+                        "text": "Enumerate the four BDAT domains.",
+                        "explanation": "BDAT stands for Business, Data, Application, and Technology, the four domains used to classify architecture concerns.",
+                        "order_matters": true,
+                        "expected_items": [
+                            {"canonical": "Business", "accepted_variants": []},
+                            {"canonical": "Data", "accepted_variants": []},
+                            {"canonical": "Application", "accepted_variants": []},
+                            {"canonical": "Technology", "accepted_variants": []}
+                        ]
           }
         ]
       }
@@ -236,13 +246,19 @@ def build_curriculum_prompt(course_title, extracted_text, study_goal="balanced_r
     elif isinstance(assessment_formats, str):
         assessment_formats = [assessment_formats]
 
+    assessment_mix = get_assessment_mix(assessment_formats)
+
     goal_directive = STUDY_GOAL_PROFILES.get(study_goal, STUDY_GOAL_PROFILES["balanced_review"])
     
     assessment_directives = [
-        ASSESSMENT_PROFILES.get(fmt, ASSESSMENT_PROFILES["not_sure"])
+        ASSESSMENT_PROFILES[fmt]
         for fmt in assessment_formats
     ]
     assessment_block = "\n".join(assessment_directives)
+    distribution_block = "\n".join(
+        f"- {question_type}: {count}"
+        for question_type, count in assessment_mix.items()
+    )
 
     title_block = (
         f"<course_title>\n{course_title.strip()}\n</course_title>\n"
@@ -261,6 +277,11 @@ Analyze the attached study material and synthesize a structured, high-retention 
 {goal_directive}
 
 {assessment_block}
+
+REQUIRED QUESTION DISTRIBUTION PER CHAPTER
+Generate exactly 10 questions matching this distribution:
+{distribution_block}
+Do not replace requested Identification or Enumeration questions with Multiple Choice questions.
 
 {DOCUMENT_STRUCTURE_RULES}
 
@@ -346,20 +367,36 @@ def generate_course_journey(course, uploaded_file=None, study_goal="balanced_rev
                     temperature=0.2,
                 ),
             )
-            return _validate_response(response.text)
+            return _validate_response(response.text, get_assessment_mix(assessment_formats))
         except Exception as e:
             print(f"[Gemini API Call Failure]: {e}")
 
     print("[Falling back to mock structured journey]")
-    return _generate_mock_journey(course.title)
+    return _generate_mock_journey(course.title, assessment_formats)
 
 
-def _validate_response(raw_json):
+def validate_question_mix(journey, required_mix):
+    for chapter in journey.chapters:
+        actual = {question_type: 0 for question_type in required_mix}
+        for question in chapter.quiz.questions:
+            if question.type not in actual:
+                raise ValueError(f"Unsupported question type: {question.type}")
+            actual[question.type] += 1
+        if actual != required_mix:
+            raise ValueError(
+                f"{chapter.title} returned {actual}; expected {required_mix}."
+            )
+
+
+def _validate_response(raw_json, required_mix=None):
     # 1. Parse string to raw Python dict
     data = json.loads(raw_json)
 
     # 2. Enforce strict Pydantic contract (types, choices count, 1 correct choice, no duplicate questions)
     validated_journey = GeneratedJourney.model_validate(data)
+
+    if required_mix is not None:
+        validate_question_mix(validated_journey, required_mix)
 
     # 3. Application-level check: chapter question quantity
     for ch_idx, chapter in enumerate(validated_journey.chapters, start=1):
@@ -373,12 +410,12 @@ def _validate_response(raw_json):
     return validated_journey.model_dump()
 
 
-def _generate_mock_journey(title):
+def _generate_mock_journey(title, assessment_formats=None):
     course_title = getattr(title, 'title', title)
     if not isinstance(course_title, str) or not course_title.strip():
         course_title = str(title) if title else "System Integration and Architecture"
 
-    return {
+    journey = {
         "schema_version": "1.0",
         "course": {
             "title": course_title,
@@ -497,3 +534,75 @@ def _generate_mock_journey(title):
             }
         ]
     }
+    journey["chapters"][0]["quiz"]["questions"] = _build_mock_questions(
+        get_assessment_mix(assessment_formats)
+    )
+    return journey
+
+
+def _build_mock_questions(assessment_mix):
+    questions = []
+
+    for index in range(assessment_mix["multiple_choice"]):
+        questions.append({
+            "type": "multiple_choice",
+            "text": f"Which architecture principle is highlighted in mock question {index + 1}?",
+            "explanation": "The selected principle keeps architecture decisions aligned with the course concepts and prevents unrelated design choices.",
+            "choices": [
+                {"text": "Layered separation", "is_correct": True},
+                {"text": "Unbounded duplication", "is_correct": False},
+                {"text": "Untracked coupling", "is_correct": False},
+                {"text": "Random deployment", "is_correct": False},
+            ],
+        })
+
+    for index in range(assessment_mix["true_false"]):
+        questions.append({
+            "type": "true_false",
+            "text": f"True or False: mock architecture statement {index + 1} supports clear separation of concerns.",
+            "explanation": "The statement is true because separating concerns makes systems easier to reason about, change, and govern.",
+            "choices": [
+                {"text": "True", "is_correct": True},
+                {"text": "False", "is_correct": False},
+            ],
+        })
+
+    identification_answers = [
+        ("Identify the framework that organizes architecture artifacts.", ["Zachman Framework", "Zachman"]),
+        ("Identify the methodology that guides architecture development.", ["TOGAF", "TOGAF ADM"]),
+        ("Identify the architecture domain covering organizational goals.", ["Business"]),
+        ("Identify the architecture domain covering stored information.", ["Data"]),
+        ("Identify the architecture domain covering infrastructure.", ["Technology"]),
+    ]
+    for index in range(assessment_mix["identification"]):
+        text, accepted_answers = identification_answers[index]
+        questions.append({
+            "type": "identification",
+            "text": text,
+            "explanation": "The accepted term is the precise concept used by the architecture framework in this lesson.",
+            "accepted_answers": accepted_answers,
+        })
+
+    enumeration_items = [
+        (["Business", "Data", "Application", "Technology"], True),
+        (["Plan", "Build", "Measure"], False),
+        (["People", "Process", "Technology"], False),
+        (["Scope", "Time", "Cost"], True),
+        (["Identify", "Assess", "Treat"], False),
+    ]
+    for index in range(assessment_mix["enumeration"]):
+        items, order_matters = enumeration_items[index]
+        questions.append({
+            "type": "enumeration",
+            "text": f"Enumerate the mock framework components for list {index + 1}.",
+            "explanation": "Each listed item represents a distinct component in the framework and earns credit when identified correctly.",
+            "order_matters": order_matters,
+            "expected_items": [
+                {"canonical": item, "accepted_variants": []}
+                for item in items
+            ],
+        })
+
+    for order, question in enumerate(questions, start=1):
+        question["order"] = order
+    return questions

@@ -91,6 +91,16 @@
 
     .quiz-action-btn { display: block; width: calc(100% - 40px); margin: 24px 20px 0; padding: 16px; font-size: 1.05rem; }
     .quiz-action-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    .quiz-typed-answer { display: grid; gap: 12px; padding: 0 20px; }
+    .quiz-text-input { width: 100%; box-sizing: border-box; padding: 14px 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; }
+    .quiz-text-input:focus { outline: none; border-color: var(--primary); }
+    .enumeration-inputs { counter-reset: answer; }
+    .enumeration-inputs .quiz-text-input { counter-increment: answer; }
+    .quiz-saving { padding: 80px 20px; text-align: center; color: var(--muted); }
+    .answer-review { width: 100%; max-width: 680px; max-height: 260px; overflow: auto; display: grid; gap: 8px; }
+    .answer-review-card { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; text-align: left; background: var(--bg); }
+    .answer-review-card strong { color: var(--ink); }
+    .answer-review-card .review-copy { margin: 4px 0 0; color: var(--muted); font-size: 0.82rem; }
 
     /* Result Sheet */
     .result-sheet {
@@ -126,11 +136,13 @@
     <div id="result-sheet" class="result-sheet">
         <h2 style="margin: 0; font-size: 1.6rem;">Quiz Complete! 🎉</h2>
         <div class="sheet-stats">
-            <div class="sheet-stat-box"><div id="sheet-score" class="sheet-stat-val">0/0</div><div class="sheet-stat-label">Score</div></div>
+            <div class="sheet-stat-box"><div id="sheet-score" class="sheet-stat-val">0/0</div><div class="sheet-stat-label">Points</div></div>
+            <div class="sheet-stat-box"><div id="sheet-percentage" class="sheet-stat-val">0%</div><div class="sheet-stat-label">Percentage</div></div>
             <div class="sheet-stat-box"><div id="sheet-xp" class="sheet-stat-val gold">+0</div><div class="sheet-stat-label">XP Earned</div></div>
             <div class="sheet-stat-box"><div id="sheet-level" class="sheet-stat-val">1</div><div class="sheet-stat-label">Level</div></div>
             <div class="sheet-stat-box"><div id="sheet-streak" class="sheet-stat-val streak">0</div><div class="sheet-stat-label">Day Streak</div></div>
         </div>
+        <div id="answer-review" class="answer-review"></div>
         <div class="sheet-actions">
             <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="btn btn-primary btn-chunky" style="text-align: center;">
                 Continue Learning &rarr;
@@ -142,20 +154,23 @@
     <script id="quiz-data" type="application/json">
         {
             "chapterId": {{ chapter.pk }},
+            "checkUrl": "{% url 'courses:check_quiz_answer' chapter.pk %}",
             "submitUrl": "{% url 'courses:submit_quiz' chapter.pk %}",
             "questions": [
                 {% for q in quiz.questions.all %}
                 {
                     "id": {{ q.id }},
                     "type": "{{ q.question_type|default:'multiple_choice' }}",
+                    "order": {{ q.order }},
                     "text": "{{ q.text|escapejs }}",
-                    "explanation": "{{ q.explanation|default:''|escapejs }}",
+                    "max_points": {{ q.max_points }},
+                    "expected_count": {{ q.answer_data.expected_items|length|default:0 }},
+                    "order_matters": {{ q.answer_data.order_matters|yesno:"true,false" }},
                     "choices": [
                         {% for c in q.choices.all %}
                         {
                             "id": {{ c.id }}, 
-                            "text": "{{ c.text|escapejs }}",
-                            "isCorrect": {{ c.is_correct|yesno:"true,false" }}
+                            "text": "{{ c.text|escapejs }}"
                         }{% if not forloop.last %},{% endif %}
                         {% endfor %}
                     ]
@@ -165,7 +180,8 @@
         }
     </script>
 
-    <script>
+    {% comment %} Legacy choice-only renderer retained temporarily for reference.{% endcomment %}
+    {% comment %}<script>
     document.addEventListener('DOMContentLoaded', () => {
         const rawData = document.getElementById('quiz-data');
         if (!rawData) return;
@@ -335,7 +351,8 @@
 
         renderQuestion();
     });
-    </script>
+    </script>{% endcomment %}
+    <script src="{% static 'courses/js/chapter_quiz.js' %}"></script>
 {% else %}
     <div style="padding: 60px 20px; text-align: center;">
         <p class="empty-state">No quiz questions yet for this chapter.</p>
