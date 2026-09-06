@@ -204,6 +204,16 @@
         color: var(--muted);
         line-height: 1.6;
     }
+    .plan-comparison-card { max-width: 760px; max-height: 90vh; overflow-y: auto; }
+    .plan-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; text-align: left; margin: 16px 0; }
+    .plan-card { padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
+    .plan-card-plus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(108, 92, 231, .12); }
+    .plan-card h4 { margin: 6px 0; color: var(--ink); font-size: 1.05rem; }
+    .plan-card p { margin-bottom: 10px; }
+    .plan-matrix { display: grid; gap: 7px; text-align: left; padding: 14px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; }
+    .plan-matrix div { display: flex; justify-content: space-between; gap: 16px; padding-top: 7px; border-top: 1px solid var(--border); color: var(--muted); font-size: .82rem; }
+    .plan-matrix b { color: var(--ink); }
+    @media (max-width: 640px) { .plan-cards { grid-template-columns: 1fr; } .plan-comparison-card { max-height: 88vh; } }
 
     /* ================= 5. ZERO-COURSE ONBOARDING HERO ================= */
     .prologue-stage {
@@ -337,6 +347,17 @@
                     <div class="xp-bar-track">
                         <div class="xp-bar-fill" data-progress="{{ xp_percentage }}"></div>
                     </div>
+                </div>
+            </div>
+
+            <div class="card" style="display:flex; justify-content:space-between; gap:16px; align-items:center; padding:14px 18px;">
+                <div>
+                    <span class="section-tag">{{ profile.plan|title }} PLAN</span>
+                    <strong style="display:block; margin-top:4px; color:var(--ink);">Active courses: {{ eligibility.active_count }} / {{ eligibility.active_limit }}</strong>
+                </div>
+                <div style="text-align:right; color:var(--muted); font-size:.8rem;">
+                    <div>Bonus credits: <strong style="color:var(--ink);">{{ profile.bonus_course_credits }}</strong></div>
+                    <div>{% if eligibility.allowed %}Generation available{% else %}Generation cooldown{% endif %}</div>
                 </div>
             </div>
 
@@ -476,7 +497,9 @@
 
         <!-- 2. EXTERNAL RIGHT SPONSOR RAIL (Completely outside the hub) -->
         <aside class="dashboard-ad-rail">
-            {% include 'courses/components/mock_sponsor_card.html' %}
+            {% if profile.plan == 'free' %}
+                {% include 'courses/components/mock_sponsor_card.html' %}
+            {% endif %}
         </aside>
     </div>
 

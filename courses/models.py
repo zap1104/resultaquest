@@ -9,11 +9,19 @@ from datetime import timedelta
 # --- SPRINT A & B & C: GAMIFICATION PROFILE & LEDGER ---
 
 class UserProfile(models.Model):
+    PLAN_CHOICES = [
+        ("free", "StudyQuest Free"),
+        ("plus", "StudyQuest Plus"),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     total_xp = models.IntegerField(default=0)
     current_level = models.IntegerField(default=1)
     streak_days = models.IntegerField(default=0)
     last_study_date = models.DateField(null=True, blank=True)
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default="free")
+    last_course_generated_at = models.DateTimeField(null=True, blank=True)
+    bonus_course_credits = models.PositiveIntegerField(default=0)
 
     def award_xp(self, amount, reason):
         XPTransaction.objects.create(user=self.user, amount=amount, reason=reason)
@@ -55,8 +63,16 @@ class Course(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='courses')
 
+    STATUS_CHOICES = [
+        ("processing", "Processing"),
+        ("active", "Active"),
+        ("archived", "Archived"),
+        ("failed", "Failed"),
+    ]
+
     title = models.CharField(max_length=200)
     description = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
 
     syllabus_text = models.TextField(blank=True)
     modules_text = models.TextField(blank=True)
@@ -200,3 +216,34 @@ class ChapterCompletion(models.Model):
 
     def __str__(self):
         return f'{self.user.username} — {self.chapter.title} (read)'
+
+
+class CourseCreditTransaction(models.Model):
+    TRANSACTION_TYPES = [
+        ("weekly_spend", "Weekly Credit Spent"),
+        ("bonus_award", "Completion Bonus Awarded"),
+        ("bonus_spend", "Bonus Credit Spent"),
+        ("admin_adjustment", "Admin Adjustment"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="course_credit_transactions")
+    transaction_type = models.CharField(max_length=30, choices=TRANSACTION_TYPES)
+    amount = models.SmallIntegerField()
+    related_course = models.ForeignKey(Course, null=True, blank=True, on_delete=models.SET_NULL, related_name="credit_transactions")
+    reference_key = models.CharField(max_length=150, null=True, blank=True, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class UserCourseCompletion(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="course_completions")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="user_completions")
+    completed_at = models.DateTimeField(auto_now_add=True)
+    bonus_credit_awarded = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "course"], name="unique_user_course_completion"),
+        ]

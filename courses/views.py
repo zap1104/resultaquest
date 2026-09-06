@@ -20,6 +20,11 @@ from .models import (
     QuizAttempt,
     UserProfile,
 )
+from .credits import (
+    award_course_completion_bonus,
+    consume_generation_credit,
+    get_generation_eligibility,
+)
 from .schemas import GenerationPreferences
 from .services import generate_course_journey
 
@@ -207,7 +212,7 @@ def auth_portal(request):
 def dashboard(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     courses = list(
-        Course.objects.filter(user=request.user).prefetch_related(
+        Course.objects.filter(user=request.user, status="active").prefetch_related(
             "chapters", "chapters__quiz", "chapters__quiz__attempts"
         )
     )
@@ -222,6 +227,7 @@ def dashboard(request):
         course.total_chapter_count = progress["total_chapters"]
 
     recent_course = courses[0] if courses else None
+    eligibility = get_generation_eligibility(profile)
 
     unlocked_count = 0
     if courses:
@@ -240,13 +246,23 @@ def dashboard(request):
         "xp_percentage": xp_percentage,
         "recent_course": recent_course,
         "unlocked_count": unlocked_count,
+        "eligibility": eligibility,
     })
 
 
 @login_required
 def course_list(request):
-    courses = Course.objects.filter(user=request.user)
-    return render(request, "courses/course_list.html", {"courses": courses})
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    active_courses = Course.objects.filter(user=request.user, status="active")
+    archived_courses = Course.objects.filter(user=request.user, status="archived")
+    return render(request, "courses/course_list.html", {
+        "active_tab": request.GET.get("tab", "active"),
+        "active_courses": active_courses,
+        "archived_courses": archived_courses,
+        "active_count": active_courses.count(),
+        "active_limit": get_generation_eligibility(profile).active_limit,
+        "eligibility": get_generation_eligibility(profile),
+    })
 
 
 # --------------------------------------------------
@@ -254,7 +270,13 @@ def course_list(request):
 # --------------------------------------------------
 @login_required
 def course_create(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    eligibility = get_generation_eligibility(profile)
+    if request.method == "GET":
+        return render(request, "courses/course_form.html", {"eligibility": eligibility, "profile": profile})
     if request.method == "POST":
+        if not eligibility.allowed:
+            return render(request, "courses/course_form.html", {"eligibility": eligibility, "profile": profile}, status=403)
         content_file = request.FILES.get("content_file")
         custom_title = request.POST.get("custom_title", "").strip()
 
@@ -289,6 +311,7 @@ def course_create(request):
                     journey_data=journey_data,
                     custom_title=custom_title,
                 )
+                consume_generation_credit(request.user, course)
 
             return redirect("courses:course_detail", pk=course.pk)
 
@@ -299,7 +322,7 @@ def course_create(request):
                 "previous_filename": content_file.name if content_file else "uploaded file",
             })
 
-    return render(request, "courses/course_form.html")
+    return render(request, "courses/course_form.html", {"eligibility": eligibility, "profile": profile})
 
 
 @transaction.atomic
@@ -483,6 +506,7 @@ def complete_chapter(request, pk):
 
         completion_state = get_chapter_completion_state(request.user, chapter)
         next_chapter = get_next_chapter(chapter)
+        bonus = award_course_completion_bonus(request.user, chapter.course)
 
         return JsonResponse({
             "awarded": True,
@@ -491,6 +515,7 @@ def complete_chapter(request, pk):
             "chapter_completed": completion_state["completed"],
             "quiz_required": (completion_state["has_quiz"] and not completion_state["quiz_passed"]),
             "next_chapter_unlocked": (completion_state["completed"] and next_chapter is not None),
+            "course_bonus_awarded": bonus["bonus_awarded"],
         })
 
     return JsonResponse({"awarded": False, "xp_earned": 0})
@@ -516,6 +541,28 @@ def course_delete(request, pk):
         course.delete()
         return redirect("courses:course_list")
     return redirect("courses:course_detail", pk=course.pk)
+
+
+@login_required
+@require_POST
+def course_archive(request, pk):
+    course = get_object_or_404(Course, pk=pk, user=request.user)
+    course.status = "archived"
+    course.save(update_fields=["status"])
+    return redirect("courses:course_list")
+
+
+@login_required
+@require_POST
+def course_restore(request, pk):
+    course = get_object_or_404(Course, pk=pk, user=request.user, status="archived")
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    eligibility = get_generation_eligibility(profile)
+    if eligibility.active_count >= eligibility.active_limit:
+        return JsonResponse({"error": "The active-course limit has been reached."}, status=409)
+    course.status = "active"
+    course.save(update_fields=["status"])
+    return redirect("courses:course_list")
 
 
 @login_required
@@ -739,7 +786,8 @@ def submit_quiz(request, pk):
         results.append(review_entry)
 
     percentage = round(total_earned / max(total_maximum, 1) * 100)
-    xp_earned = calculate_quiz_xp(percentage)
+    from .credits import calculate_delta_quiz_xp
+    xp_earned = calculate_delta_quiz_xp(request.user, quiz, percentage)
 
     QuizAttempt.objects.create(
         user=request.user,
@@ -755,6 +803,7 @@ def submit_quiz(request, pk):
 
     completion_state = get_chapter_completion_state(request.user, chapter)
     next_chapter = get_next_chapter(chapter)
+    course_bonus = award_course_completion_bonus(request.user, chapter.course)
 
     return JsonResponse({
         "score": total_earned,
@@ -772,4 +821,5 @@ def submit_quiz(request, pk):
         "new_level": profile.current_level,
         "new_streak": profile.streak_days,
         "results": results,
+        "course_bonus_awarded": course_bonus["bonus_awarded"],
     })

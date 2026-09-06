@@ -12,16 +12,26 @@
     <a href="{% url 'courses:course_create' %}" class="btn btn-primary">+ Create Course</a>
 </div>
 
-{% if courses %}
+<div style="display:flex; gap:8px; border-bottom:1px solid var(--border); margin-bottom:20px;">
+    <a href="?tab=active" class="btn btn-ghost">Active Courses ({{ active_courses.count }})</a>
+    <a href="?tab=archived" class="btn btn-ghost">Archived ({{ archived_courses.count }})</a>
+</div>
+
+<div class="card" style="margin-bottom:20px; display:flex; justify-content:space-between; gap:16px; align-items:center;">
+    <div><strong>Active Slots: {{ active_count }} / {{ active_limit }}</strong><p class="subtitle" style="margin:4px 0 0;">Archived courses do not consume active slots.</p></div>
+    <span class="chip chip-gold">{{ user.userprofile.bonus_course_credits }} bonus credit{{ user.userprofile.bonus_course_credits|pluralize }}</span>
+</div>
+
+{% if active_tab == 'active' and active_courses %}
     <div class="card-grid">
-        {% for course in courses %}
-            <a class="card course-card" href="{% url 'courses:course_detail' course.pk %}">
-                <h3>{{ course.title }}</h3>
-                <p>{{ course.description|default:"No description provided."|truncatechars:75 }}</p>
-                <div style="margin-top: 12px;">
-                    <span class="chip chip-accent">{{ course.chapters.count }} Chapter{{ course.chapters.count|pluralize }}</span>
-                </div>
-            </a>
+        {% for course in active_courses %}
+            <div class="card course-card"><a href="{% url 'courses:course_detail' course.pk %}"><h3>{{ course.title }}</h3></a><p>{{ course.description|default:"No description provided."|truncatechars:75 }}</p><form method="post" action="{% url 'courses:course_archive' course.pk %}">{% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">Archive</button></form></div>
+        {% endfor %}
+    </div>
+{% elif active_tab == 'archived' and archived_courses %}
+    <div class="card-grid">
+        {% for course in archived_courses %}
+            <div class="card course-card"><h3>{{ course.title }}</h3><p>Archived course</p><form method="post" action="{% url 'courses:course_restore' course.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-sm" type="submit" {% if active_count >= active_limit %}disabled{% endif %}>Restore</button></form></div>
         {% endfor %}
     </div>
 {% else %}

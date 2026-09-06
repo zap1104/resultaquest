@@ -195,6 +195,12 @@
             <span class="section-tag">⚡ STUDYQUEST</span>
             <h1 class="hero-greeting">Create a New Course</h1>
             <p class="subtitle">Upload your syllabus or lecture notes and let AI build a tailored study guide.</p>
+            {% if eligibility %}
+                <div class="quota-status-card" style="display:flex; justify-content:space-between; gap:12px; align-items:center; padding:12px 16px; margin:12px 0; border:1px solid var(--border); border-radius:14px; background:var(--surface); font-size:.82rem;">
+                    <span>Active courses: <strong>{{ eligibility.active_count }}/{{ eligibility.active_limit }}</strong> · Bonus credits: <strong>{{ profile.bonus_course_credits }}</strong></span>
+                    {% if eligibility.allowed %}<span class="chip chip-gold">{{ profile.plan|title }} generation ready</span>{% else %}<span style="color:var(--danger); font-weight:700;">Generation unavailable</span>{% endif %}
+                </div>
+            {% endif %}
         </div>
 
         {% if generation_failed %}
@@ -286,7 +292,7 @@
                 <div class="planned-assessment" id="planned-assessment" aria-live="polite"></div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-chunky btn-block forge-btn" style="margin-top: 28px;">
+            <button type="submit" class="btn btn-primary btn-chunky btn-block forge-btn" style="margin-top: 28px;" {% if eligibility and not eligibility.allowed %}disabled{% endif %}>
                 Generate Learning Path &rarr;
             </button>
         </form>
