@@ -129,7 +129,8 @@
             if (!modal) return;
             modal.hidden = !open;
             modal.setAttribute('aria-hidden', (!open).toString());
-            document.body.style.overflow = open ? 'hidden' : '';
+            document.documentElement.classList.toggle('modal-open', open);
+            document.body.classList.toggle('modal-open', open);
         };
 
         document.getElementById('open-sample-offer-btn')?.addEventListener('click', () => toggleModal(offerModal, true));
