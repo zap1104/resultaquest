@@ -57,8 +57,7 @@ class GenerationPreferences(BaseModel):
     def validate_assessment_formats(self):
         if not self.assessment_formats:
             raise ValueError("Select at least one assessment format.")
-        if len(set(self.assessment_formats)) != len(self.assessment_formats):
-            raise ValueError("Assessment formats must be unique.")
+        self.assessment_formats = list(dict.fromkeys(self.assessment_formats))
         return self
 
 class GenerationProfile(BaseModel):

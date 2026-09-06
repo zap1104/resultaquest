@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressFill = document.getElementById('quiz-progress-fill');
     const progressLabel = document.getElementById('quiz-progress-label');
     const resultSheet = document.getElementById('result-sheet');
+    const reviewDrawer = document.getElementById('review-drawer-modal');
+    const reviewContainer = document.getElementById('review-items-container');
+    const reviewHeaderScore = document.getElementById('review-header-score');
     const userAnswers = {};
     let currentIndex = 0;
     let currentFeedback = null;
@@ -30,23 +33,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const review = document.getElementById('answer-review');
         review.innerHTML = '';
         addText(review, 'feedback-title', 'Answer Review');
+        reviewContainer.innerHTML = '';
+        reviewHeaderScore.textContent = `Score: ${results.reduce((sum, item) => sum + item.earned_points, 0)} points`;
         results.forEach((result, index) => {
             const card = document.createElement('div');
-            card.className = 'answer-review-card';
-            const status = result.is_correct ? 'Correct' : 'Needs review';
-            addText(card, '', `${index + 1}. ${status} - ${result.earned_points}/${result.maximum_points} points`);
-            if (result.correct_choice_text) {
-                addText(card, 'review-copy', `Correct choice: ${result.correct_choice_text}`);
-            } else if (result.canonical_answer) {
-                addText(card, 'review-copy', `Accepted answer: ${result.canonical_answer}`);
-            } else if (result.question_type === 'enumeration') {
-                addText(card, 'review-copy', `Matched: ${(result.matched_items || []).join(', ') || 'None'}`);
-                if (result.missing_items?.length) {
-                    addText(card, 'review-copy', `Missing: ${result.missing_items.join(', ')}`);
-                }
+            const isFull = result.earned_points === result.maximum_points;
+            card.className = `review-item-card ${isFull ? 'is-correct' : (result.earned_points > 0 ? 'is-partial' : '')}`;
+            const header = document.createElement('div');
+            header.className = 'review-item-header';
+            addText(header, '', `${index + 1}. ${result.question_type.replace('_', ' ')}`);
+            addText(header, '', `${result.earned_points}/${result.maximum_points} points`);
+            card.appendChild(header);
+            addText(card, 'review-item-qtext', result.question_text || 'Question');
+            const answerBlock = document.createElement('div');
+            answerBlock.className = 'review-answer-block';
+            if (result.question_type === 'multiple_choice' || result.question_type === 'true_false') {
+                addText(answerBlock, '', `Your selection: ${result.submitted_choice_text || 'No answer'}`);
+                if (!result.is_correct) addText(answerBlock, '', `Correct choice: ${result.correct_choice_text || 'Unavailable'}`);
+            } else if (result.question_type === 'identification') {
+                addText(answerBlock, '', `Your answer: ${result.submitted_answer?.text || 'Blank'}`);
+                if (!result.is_correct) addText(answerBlock, '', `Accepted answer: ${result.canonical_answer || 'Unavailable'}`);
+            } else {
+                addText(answerBlock, '', `Matched: ${(result.matched_items || []).join(', ') || 'None'}`);
+                if (result.missing_items?.length) addText(answerBlock, '', `Missing: ${result.missing_items.join(', ')}`);
             }
-            addText(card, 'review-copy', result.explanation || 'Review the lesson for this concept.');
+            card.appendChild(answerBlock);
+            addText(card, 'review-expl', result.explanation || 'Review the lesson for this concept.');
             review.appendChild(card);
+            reviewContainer.appendChild(card.cloneNode(true));
         });
     }
 
@@ -237,6 +251,17 @@ document.addEventListener('DOMContentLoaded', () => {
             questionWrap.textContent = error.message;
         }
     }
+
+    document.getElementById('open-review-btn')?.addEventListener('click', () => {
+        resultSheet.classList.remove('open');
+        reviewDrawer.classList.add('is-active');
+        reviewDrawer.setAttribute('aria-hidden', 'false');
+    });
+    document.getElementById('close-review-btn')?.addEventListener('click', () => {
+        reviewDrawer.classList.remove('is-active');
+        reviewDrawer.setAttribute('aria-hidden', 'true');
+        resultSheet.classList.add('open');
+    });
 
     if (questions.length) renderQuestion();
 });

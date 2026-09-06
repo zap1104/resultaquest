@@ -2,9 +2,99 @@ import json
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.urls import reverse
 
-from courses.models import Chapter, Choice, Course, Question, Quiz
-from courses.views import calculate_quiz_xp
+from courses.models import Chapter, ChapterCompletion, Choice, Course, Question, Quiz, QuizAttempt, UserProfile
+from courses.schemas import GenerationPreferences, get_assessment_mix
+from courses.views import (
+    _grade_question,
+    calculate_quiz_xp,
+    get_chapter_status,
+    normalize_text_answer,
+)
+
+
+class AssessmentMixSchemaTests(TestCase):
+    def test_supported_mix_calculations_sum_to_ten(self):
+        selections = [
+            ["multiple_choice"],
+            ["identification"],
+            ["enumeration"],
+            ["multiple_choice", "identification", "enumeration"],
+        ]
+
+        for selection in selections:
+            self.assertEqual(sum(get_assessment_mix(selection).values()), 10)
+
+    def test_empty_selection_falls_back_to_multiple_choice_mix(self):
+        self.assertEqual(
+            get_assessment_mix([]),
+            {"multiple_choice": 7, "true_false": 3, "identification": 0, "enumeration": 0},
+        )
+
+    def test_preferences_deduplicate_formats(self):
+        preferences = GenerationPreferences(
+            assessment_formats=["multiple_choice", "identification", "multiple_choice"]
+        )
+
+        self.assertEqual(preferences.assessment_formats, ["multiple_choice", "identification"])
+
+
+class QuestionGradingLogicTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="grading-student", password="password123")
+        self.course = Course.objects.create(user=self.user, title="Networking")
+        self.chapter = Chapter.objects.create(course=self.course, order=1, title="VLANs")
+        self.quiz = Quiz.objects.create(chapter=self.chapter, title="VLAN Quiz")
+
+    def test_text_normalization(self):
+        self.assertEqual(normalize_text_answer("  IEEE 802.1Q  "), "ieee 802.1q")
+        self.assertEqual(normalize_text_answer("Network-Segmentation"), "network segmentation")
+        self.assertEqual(normalize_text_answer("Enhanced   Security..."), "enhanced security")
+
+    def test_identification_accepts_variant_and_rejects_wrong_answer(self):
+        question = Question.objects.create(
+            quiz=self.quiz,
+            order=1,
+            question_type="identification",
+            text="Name the tagging protocol.",
+            answer_data={"accepted_answers": ["IEEE 802.1Q", "802.1Q", "Dot1q"]},
+        )
+
+        earned, maximum, feedback = _grade_question(question, {"text": "  802.1q  "})
+        self.assertEqual((earned, maximum), (1, 1))
+        self.assertTrue(feedback["is_correct"])
+
+        earned, _, feedback = _grade_question(question, {"text": "ISL Protocol"})
+        self.assertEqual(earned, 0)
+        self.assertFalse(feedback["is_correct"])
+
+    def test_enumeration_awards_partial_credit_and_rejects_duplicates(self):
+        question = Question.objects.create(
+            quiz=self.quiz,
+            order=2,
+            question_type="enumeration",
+            text="Enumerate the benefits.",
+            answer_data={
+                "order_matters": False,
+                "expected_items": [
+                    {"canonical": "Segmentation", "accepted_variants": ["Network Segmentation"]},
+                    {"canonical": "Security", "accepted_variants": ["Enhanced Security"]},
+                    {"canonical": "Traffic Management", "accepted_variants": []},
+                ],
+            },
+        )
+
+        earned, maximum, feedback = _grade_question(
+            question,
+            {"items": ["network segmentation", "security", "security"]},
+        )
+        self.assertEqual((earned, maximum), (2, 3))
+        self.assertEqual(set(feedback["matched_items"]), {"Segmentation", "Security"})
+        self.assertEqual(feedback["missing_items"], ["Traffic Management"])
+
+    def test_calculate_quiz_xp_tiers(self):
+        self.assertEqual([calculate_quiz_xp(score) for score in (40, 60, 70, 85, 100)], [10, 20, 35, 45, 60])
 
 
 class MixedAssessmentFlowTests(TestCase):
@@ -114,6 +204,10 @@ class MixedAssessmentFlowTests(TestCase):
         self.assertEqual(result["total_questions"], 4)
         self.assertEqual(result["percentage"], 100)
         self.assertEqual(len(result["results"]), 2)
+        self.assertEqual(result["results"][0]["order"], 1)
+        self.assertEqual(result["results"][0]["question_text"], "Identify the framework.")
+        self.assertEqual(result["results"][0]["submitted_answer"], {"text": "Zachman"})
+        self.assertEqual(result["results"][1]["matched_items"], ["Business", "Data", "Technology"])
 
     def test_quiz_xp_is_based_on_percentage_bands(self):
         self.assertEqual(calculate_quiz_xp(49), 10)
@@ -121,3 +215,111 @@ class MixedAssessmentFlowTests(TestCase):
         self.assertEqual(calculate_quiz_xp(70), 35)
         self.assertEqual(calculate_quiz_xp(85), 45)
         self.assertEqual(calculate_quiz_xp(100), 60)
+
+
+class QuizEndpointIntegrationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="endpoint-student", password="password123")
+        self.course = Course.objects.create(user=self.user, title="Networking")
+        self.chapter = Chapter.objects.create(course=self.course, order=1, title="VLANs")
+        self.quiz = Quiz.objects.create(chapter=self.chapter, title="VLAN Quiz")
+        self.choice_question = Question.objects.create(
+            quiz=self.quiz,
+            order=1,
+            question_type="multiple_choice",
+            text="What does this standard provide?",
+            explanation="It is a trunk tagging protocol.",
+        )
+        self.correct_choice = Choice.objects.create(
+            question=self.choice_question,
+            text="Trunk tagging",
+            is_correct=True,
+        )
+        Choice.objects.create(question=self.choice_question, text="Encryption")
+        self.identification = Question.objects.create(
+            quiz=self.quiz,
+            order=2,
+            question_type="identification",
+            text="Name the protocol used on trunk links.",
+            explanation="802.1Q is the answer.",
+            answer_data={"accepted_answers": ["802.1Q", "IEEE 802.1Q"]},
+        )
+        self.client.login(username="endpoint-student", password="password123")
+
+    def post_json(self, name, payload):
+        return self.client.post(
+            reverse(name, kwargs={"pk": self.chapter.pk}),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+    def test_payload_hides_answer_keys_and_accepted_answers(self):
+        response = self.client.get(reverse("courses:chapter_quiz", kwargs={"pk": self.chapter.pk}))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        payload = content.split('<script id="quiz-data"', 1)[1].split("</script>", 1)[0]
+        self.assertNotIn('"is_correct"', payload)
+        self.assertNotIn("802.1Q", payload)
+
+    def test_check_endpoint_does_not_create_attempt_or_award_xp(self):
+        response = self.post_json(
+            "courses:check_quiz_answer",
+            {"question_id": self.choice_question.pk, "answer": {"choice_id": self.correct_choice.pk}},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["is_correct"])
+        self.assertEqual(QuizAttempt.objects.count(), 0)
+        self.assertEqual(UserProfile.objects.get(user=self.user).total_xp, 0)
+
+    def test_submit_regrades_authoritatively_and_returns_review_audit(self):
+        response = self.post_json(
+            "courses:submit_quiz",
+            {
+                "answers": {
+                    str(self.choice_question.pk): {"choice_id": self.correct_choice.pk},
+                    str(self.identification.pk): {"text": "802.1q"},
+                }
+            },
+        )
+
+        data = response.json()
+        self.assertEqual((data["score"], data["total_questions"], data["percentage"]), (2, 2, 100))
+        self.assertEqual(data["xp_earned"], 60)
+        self.assertEqual(QuizAttempt.objects.count(), 1)
+        self.assertEqual(UserProfile.objects.get(user=self.user).total_xp, 60)
+        self.assertEqual(data["results"][0]["submitted_choice_text"], "Trunk tagging")
+        self.assertEqual(data["results"][1]["submitted_answer"], {"text": "802.1q"})
+
+
+class ProgressionGateIntegrationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="progress-student", password="password123")
+        self.course = Course.objects.create(user=self.user, title="Networking")
+        self.chapter_one = Chapter.objects.create(course=self.course, order=1, title="Chapter 1")
+        self.chapter_two = Chapter.objects.create(course=self.course, order=2, title="Chapter 2")
+        self.quiz = Quiz.objects.create(chapter=self.chapter_one, title="Quiz 1")
+
+    def test_future_chapter_starts_locked(self):
+        self.assertEqual(get_chapter_status(self.user, self.chapter_one), "available")
+        self.assertEqual(get_chapter_status(self.user, self.chapter_two), "locked")
+
+    def test_guided_pass_requires_reading_and_seventy_percent(self):
+        ChapterCompletion.objects.create(user=self.user, chapter=self.chapter_one)
+        QuizAttempt.objects.create(user=self.user, quiz=self.quiz, score=3, total_questions=4, xp_earned=35)
+
+        self.assertEqual(get_chapter_status(self.user, self.chapter_one), "completed")
+        self.assertEqual(get_chapter_status(self.user, self.chapter_two), "available")
+
+    def test_test_out_at_eighty_five_percent_does_not_require_reading(self):
+        QuizAttempt.objects.create(user=self.user, quiz=self.quiz, score=9, total_questions=10, xp_earned=45)
+
+        self.assertEqual(get_chapter_status(self.user, self.chapter_one), "completed")
+        self.assertEqual(get_chapter_status(self.user, self.chapter_two), "available")
+
+    def test_seventy_five_percent_without_reading_does_not_unlock(self):
+        QuizAttempt.objects.create(user=self.user, quiz=self.quiz, score=3, total_questions=4, xp_earned=35)
+
+        self.assertEqual(get_chapter_status(self.user, self.chapter_one), "available")
+        self.assertEqual(get_chapter_status(self.user, self.chapter_two), "locked")

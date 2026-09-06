@@ -40,7 +40,7 @@ def normalize_text_answer(value):
     value = value.casefold()
     value = re.sub(r"[^\w\s.]", " ", value)
     value = re.sub(r"\s+", " ", value)
-    return value.strip()
+    return value.strip().strip(".")
 
 
 def calculate_quiz_xp(percentage):
@@ -718,14 +718,28 @@ def submit_quiz(request, pk):
         earned_points, maximum_points, feedback = _grade_question(question, submitted_answer)
         total_earned += earned_points
         total_maximum += maximum_points
-        results.append({
+        review_entry = {
             "question_id": question.id,
+            "order": question.order,
             "question_type": question.question_type,
+            "question_text": question.text,
             "earned_points": earned_points,
             "maximum_points": maximum_points,
             "explanation": question.explanation,
+            "submitted_answer": submitted_answer if isinstance(submitted_answer, dict) else {},
             **feedback,
-        })
+        }
+
+        if question.question_type in {"multiple_choice", "true_false"}:
+            chosen_id = (submitted_answer or {}).get("choice_id") if isinstance(submitted_answer, dict) else None
+            try:
+                chosen_id = int(chosen_id)
+            except (TypeError, ValueError):
+                chosen_id = None
+            chosen_choice = next((choice for choice in question.choices.all() if choice.id == chosen_id), None)
+            review_entry["submitted_choice_text"] = chosen_choice.text if chosen_choice else "No answer"
+
+        results.append(review_entry)
 
     percentage = round(total_earned / max(total_maximum, 1) * 100)
     xp_earned = calculate_quiz_xp(percentage)
