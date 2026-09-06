@@ -12,8 +12,16 @@
 
     <link rel="stylesheet" href="{% static 'courses/css/style.css' %}">
     <style>
-        .topbar-plan-badge { display:inline-flex; align-items:center; justify-content:center; min-height:30px; padding:0 11px; border:1px solid var(--border); border-radius:999px; background:rgba(255,255,255,.04); color:var(--muted); font-size:.72rem; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
-        .topbar-plan-badge.is-plus { border-color:rgba(255,184,0,.3); background:rgba(255,184,0,.1); color:var(--gold); }
+        .topbar-plan { position:relative; }
+        .topbar-plan-chip { min-height:32px; padding:0 12px; display:inline-flex; align-items:center; gap:7px; border:1px solid rgba(0,194,168,.28); border-radius:999px; background:linear-gradient(135deg,rgba(0,194,168,.12),rgba(108,92,231,.08)); color:var(--accent); font:inherit; font-size:.72rem; font-weight:900; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; }
+        .topbar-plan-chip.is-plus { border-color:rgba(255,184,0,.32); background:linear-gradient(135deg,rgba(255,184,0,.14),rgba(108,92,231,.12)); color:var(--gold); }
+        .plan-dot { width:7px; height:7px; border-radius:999px; background:currentColor; box-shadow:0 0 8px currentColor; }
+        .topbar-plan-menu { position:absolute; top:calc(100% + 12px); right:0; z-index:1200; width:min(340px,calc(100vw - 28px)); padding:16px; border:1px solid var(--border); border-radius:16px; background:var(--surface); box-shadow:0 18px 48px rgba(0,0,0,.45); }
+        .topbar-plan-menu[hidden] { display:none; }
+        .plan-menu-heading { display:flex; justify-content:space-between; gap:12px; margin-bottom:14px; }
+        .plan-menu-heading span { color:var(--ink); font-size:.95rem; font-weight:900; }
+        .plan-menu-heading strong { color:var(--accent); font-size:.68rem; text-transform:uppercase; }
+        .plan-menu-copy { margin:0 0 12px; color:var(--muted); font-size:.76rem; line-height:1.5; }
     </style>
 </head>
 <body>
@@ -22,9 +30,14 @@
         
         {% if user.is_authenticated %}
             <div class="stats">
-                <span class="topbar-plan-badge {% if user.userprofile.plan == 'plus' %}is-plus{% endif %}">
-                    {% if user.userprofile.plan == 'plus' %}✦ Plus{% else %}Free{% endif %}
-                </span>
+                <div class="topbar-plan">
+                    <button type="button" class="topbar-plan-chip {% if user.userprofile.plan == 'plus' %}is-plus{% endif %}" id="topbar-plan-btn" aria-expanded="false" aria-controls="topbar-plan-menu"><span class="plan-dot"></span>{% if user.userprofile.plan == 'plus' %}Plus{% else %}Free{% endif %}<span aria-hidden="true">▾</span></button>
+                    <div class="topbar-plan-menu" id="topbar-plan-menu" hidden>
+                        <div class="plan-menu-heading"><span>StudyQuest {% if user.userprofile.plan == 'plus' %}Plus{% else %}Free{% endif %}</span><strong>Current Plan</strong></div>
+                        <p class="plan-menu-copy">Core learning tools, mixed assessments, and chapter progression are available to every learner.</p>
+                        <button type="button" class="btn btn-primary btn-sm" id="topbar-compare-plans">Compare Plans</button>
+                    </div>
+                </div>
                 <span class="stat" title="Level">🏅 Lv. {{ user.userprofile.current_level|default:1 }}</span>
                 <span class="stat" title="XP">⭐ {{ user.userprofile.total_xp|default:0 }} XP</span>
                 <span class="stat" title="Streak">🔥 {{ user.userprofile.streak_days|default:0 }} day streak</span>
@@ -71,6 +84,33 @@
                 current = current === 'light' ? 'dark' : 'light';
                 root.setAttribute('data-theme', current);
                 localStorage.setItem('studyquest_theme', current);
+            });
+        })();
+    </script>
+    <script>
+        (() => {
+            const button = document.getElementById('topbar-plan-btn');
+            const menu = document.getElementById('topbar-plan-menu');
+            if (!button || !menu) return;
+            button.addEventListener('click', () => {
+                const open = menu.hidden;
+                menu.hidden = !open;
+                button.setAttribute('aria-expanded', String(open));
+            });
+            document.getElementById('topbar-compare-plans')?.addEventListener('click', () => {
+                const modal = document.getElementById('plus-preview-modal');
+                if (modal) {
+                    menu.hidden = true;
+                    modal.hidden = false;
+                    modal.setAttribute('aria-hidden', 'false');
+                    document.documentElement.classList.add('modal-open');
+                    document.body.classList.add('modal-open');
+                } else {
+                    window.location.href = '{% url "courses:dashboard" %}';
+                }
+            });
+            document.addEventListener('click', (event) => {
+                if (!event.target.closest('.topbar-plan')) menu.hidden = true;
             });
         })();
     </script>

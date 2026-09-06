@@ -255,7 +255,11 @@ def course_list(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     active_courses = Course.objects.filter(user=request.user, status="active")
     archived_courses = Course.objects.filter(user=request.user, status="archived")
+    for course in active_courses:
+        progress = calculate_course_progress(request.user, course)
+        course.progress_pct = progress["percentage"]
     return render(request, "courses/course_list.html", {
+        "profile": profile,
         "active_tab": request.GET.get("tab", "active"),
         "active_courses": active_courses,
         "archived_courses": archived_courses,

@@ -443,18 +443,6 @@
                 </div>
             </div>
 
-            <div class="card" style="display:flex; justify-content:space-between; gap:16px; align-items:center; padding:14px 18px;">
-                <div>
-                    <span class="section-tag">{{ profile.plan|title }} PLAN</span>
-                    <strong style="display:block; margin-top:4px; color:var(--ink);">Weekly usage: {{ eligibility.weekly_used }} / {{ eligibility.weekly_limit }}</strong>
-                </div>
-                <div style="text-align:right; color:var(--muted); font-size:.8rem;">
-                    <div>Active courses: <strong style="color:var(--ink);">{{ eligibility.active_count }} / {{ eligibility.active_limit }}</strong></div>
-                    <div>Bonus credits: <strong style="color:var(--ink);">{{ profile.bonus_course_credits }} / {{ eligibility.bonus_limit }}</strong></div>
-                    <div>{% if eligibility.allowed %}Generation available{% else %}Generation cooldown{% endif %}</div>
-                </div>
-            </div>
-
             <div class="dashboard-grid">
                 <div class="dashboard-primary">
                     {% if recent_course %}
@@ -492,20 +480,6 @@
                         {% endfor %}
                     </div>
 
-                    <div class="section-header">
-                        <h2>Active Courses</h2>
-                        <a href="{% url 'courses:course_create' %}" class="btn btn-secondary btn-sm">+ New Course</a>
-                    </div>
-
-                    <div class="card-grid">
-                        {% for course in courses %}
-                            <a class="card course-card" href="{% url 'courses:course_detail' course.pk %}">
-                                <h3>{{ course.title }}</h3>
-                                <p>{{ course.description|default:"AI-generated learning path based on your uploaded materials."|truncatechars:65 }}</p>
-                                <span class="chip chip-accent">{{ course.chapters.count }} Chapter{{ course.chapters.count|pluralize }}</span>
-                            </a>
-                        {% endfor %}
-                    </div>
                 </div>
 
                 <!-- Internal Dashboard Sidebar (Daily Goals & Achievements ONLY) -->
