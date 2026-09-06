@@ -26,6 +26,9 @@ class GenerationEligibility:
     available_at: object | None
     active_count: int
     active_limit: int
+    weekly_used: int = 0
+    weekly_limit: int = 1
+    bonus_limit: int = 1
 
 
 def get_active_course_count(user, plan=None):
@@ -41,27 +44,33 @@ def get_generation_eligibility(profile):
     limits = get_plan_limits(profile.plan)
     active_count = get_active_course_count(profile.user)
     if active_count >= limits["active_courses"]:
-        return GenerationEligibility(False, None, "active_course_limit", None, active_count, limits["active_courses"])
+        weekly_count = _weekly_generation_count(profile.user)
+        return GenerationEligibility(False, None, "active_course_limit", None, active_count, limits["active_courses"], weekly_count, limits["weekly_generations"], limits["bonus_credit_cap"])
 
-    window_start = timezone.now() - COURSE_GENERATION_COOLDOWN
-    weekly_spend_count = CourseCreditTransaction.objects.filter(
-        user=profile.user,
-        transaction_type="weekly_spend",
-        created_at__gte=window_start,
-    ).count()
+    weekly_spend_count = _weekly_generation_count(profile.user)
     if weekly_spend_count == 0 and profile.last_course_generated_at:
         if profile.last_course_generated_at + COURSE_GENERATION_COOLDOWN > timezone.now():
             weekly_spend_count = limits["weekly_generations"]
     if weekly_spend_count < limits["weekly_generations"]:
-        return GenerationEligibility(True, "weekly", "first_generation" if weekly_spend_count == 0 else "weekly_credit_available", None, active_count, limits["active_courses"])
+        return GenerationEligibility(True, "weekly", "first_generation" if weekly_spend_count == 0 else "weekly_credit_available", None, active_count, limits["active_courses"], weekly_spend_count, limits["weekly_generations"], limits["bonus_credit_cap"])
     if profile.bonus_course_credits > 0:
-        return GenerationEligibility(True, "bonus", "bonus_credit_available", None, active_count, limits["active_courses"])
+        return GenerationEligibility(True, "bonus", "bonus_credit_available", None, active_count, limits["active_courses"], weekly_spend_count, limits["weekly_generations"], limits["bonus_credit_cap"])
 
     last_spend = CourseCreditTransaction.objects.filter(
-        user=profile.user, transaction_type="weekly_spend"
+        user=profile.user,
+        transaction_type="weekly_spend",
     ).order_by("-created_at").first()
     available_at = last_spend.created_at + COURSE_GENERATION_COOLDOWN if last_spend else None
-    return GenerationEligibility(False, None, "weekly_cooldown", available_at, active_count, limits["active_courses"])
+    return GenerationEligibility(False, None, "weekly_cooldown", available_at, active_count, limits["active_courses"], weekly_spend_count, limits["weekly_generations"], limits["bonus_credit_cap"])
+
+
+def _weekly_generation_count(user):
+    window_start = timezone.now() - COURSE_GENERATION_COOLDOWN
+    return CourseCreditTransaction.objects.filter(
+        user=user,
+        transaction_type="weekly_spend",
+        created_at__gte=window_start,
+    ).count()
 
 
 @transaction.atomic
