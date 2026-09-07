@@ -1447,175 +1447,63 @@ body {
 }
 
 /* =========================================================
-   PHASE M9: SHARED MODALS & OVERLAYS OPTIMIZATION
+   PHASE M9: SHARED MODALS & OVERLAYS (CENTERED & ADAPTIVE)
    ========================================================= */
 
-/* Prevent background scroll lock leak */
-body.modal-open {
+/* Prevent background scroll leak */
+body.modal-open,
+html.modal-open {
     overflow: hidden !important;
     touch-action: none;
 }
 
-/* Modal Viewport Safety Defaults */
+/* Base Backdrop: Centered & Dynamic Viewport Insets */
+.sponsor-modal-backdrop,
 .sq-modal-backdrop,
-.plus-modal-backdrop,
-.sponsor-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1500;
-    background: rgba(10, 14, 26, 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    box-sizing: border-box;
-}
-
-.sq-modal-backdrop[hidden],
-.plus-modal-backdrop[hidden],
-.sponsor-modal-backdrop[hidden] {
-    display: none !important;
-}
-
-/* Plan Comparison Responsive Layout */
-@media (max-width: 768px) {
-    .plus-modal-card {
-        width: 100% !important;
-        max-width: 520px !important;
-        max-height: min(90dvh, 680px) !important;
-        display: flex;
-        flex-direction: column;
-        padding: 20px 16px calc(16px + env(safe-area-inset-bottom)) !important;
-        overflow: hidden;
-        border-radius: 20px !important;
-    }
-
-    .plus-modal-header {
-        flex-shrink: 0;
-        padding-bottom: 12px;
-        margin-bottom: 12px;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .plus-modal-header h2 {
-        font-size: 1.25rem !important;
-    }
-
-    /* Scroll container for plans */
-    .plus-modal-scroll {
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        padding-right: 4px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-    }
-
-    /* Stack comparison columns into vertical cards */
-    .plan-compare-grid {
-        grid-template-columns: 1fr !important;
-        gap: 12px !important;
-    }
-
-    .plan-card {
-        padding: 16px !important;
-        border-radius: 14px !important;
-    }
-
-    .plan-card-features {
-        gap: 8px !important;
-        font-size: 0.84rem !important;
-    }
-
-    /* 48px Touch-friendly buttons */
-    .plus-modal-card .btn {
-        min-height: 48px;
-        font-size: 0.95rem;
-    }
-
-    /* Sponsor Demo Modal Video / Poster Cap */
-    .sponsor-modal-card {
-        width: 100% !important;
-        max-height: 88dvh !important;
-        overflow-y: auto;
-        padding: 20px 16px !important;
-    }
-
-    .sponsor-modal-media {
-        max-height: 200px !important;
-        object-fit: cover;
-    }
-}
-
-@media (max-width: 480px) {
-    .sq-modal-box {
-        padding: 20px 16px calc(16px + env(safe-area-inset-bottom)) !important;
-        border-radius: 18px !important;
-        max-height: 90dvh;
-        overflow-y: auto;
-    }
-
-    .sq-modal-header h3 {
-        font-size: 1.15rem;
-    }
-
-    .sq-modal-close {
-        width: 44px;
-        height: 44px;
-        display: grid;
-        place-items: center;
-    }
-
-    .sq-form-group input,
-    .sq-form-group textarea {
-        font-size: 16px !important; /* Blocks iOS Safari zoom */
-    }
-
-    .sq-modal-actions {
-        flex-direction: column-reverse;
-        gap: 8px;
-    }
-
-    .sq-modal-actions .btn {
-        width: 100%;
-        min-height: 48px;
-    }
-}
-
-/* ================= SPONSOR DEMO MODAL ================= */
-.sponsor-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
+.plus-modal-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10000 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) !important;
     background: rgba(5, 10, 22, 0.88);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    box-sizing: border-box;
 }
 
-.sponsor-modal-backdrop[hidden] {
+.sponsor-modal-backdrop.is-open,
+.sponsor-modal-backdrop:not([hidden]) {
+    display: flex !important;
+}
+
+.sponsor-modal-backdrop[hidden],
+#demo-sponsor-modal[hidden],
+#plus-preview-modal[hidden] {
     display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 
+/* Base Modal Shell */
 .sponsor-modal-card {
     position: relative;
-    width: min(100%, 480px);
-    max-height: calc(100dvh - 40px);
+    width: min(100%, 460px);
+    max-height: calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow-y: auto;
     overscroll-behavior: contain;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 28px 24px 24px;
+    border-radius: 20px !important;
+    padding: 24px 22px 20px;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
     color: var(--ink);
+    margin: auto;
 }
 
+/* Close Hitbox (44px Accessible Target) */
 .sponsor-modal-close {
     position: absolute;
     top: 14px;
@@ -1651,38 +1539,30 @@ body.modal-open {
     margin: 0 0 16px;
 }
 
+/* Sponsor Poster Adaptive Cropping */
 .sponsor-media-wrap {
     width: 100%;
-    height: 180px;
-    background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(0, 194, 168, 0.15));
+    height: 200px;
+    background: #080c24;
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 }
 
-.sponsor-modal-img {
-    max-height: 100%;
-    width: auto;
-    object-fit: contain;
-}
-
-.sponsor-modal-details {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 20px;
-    font-size: 0.84rem;
-    color: var(--muted);
+.sponsor-modal-poster {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 25%;
+    display: block;
 }
 
 .sponsor-modal-actions {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin-top: 6px;
 }
 
 .sponsor-modal-actions .btn {
@@ -1690,115 +1570,147 @@ body.modal-open {
     min-height: 48px;
 }
 
-@media (max-width: 640px) {
-    .sponsor-modal-backdrop {
-        padding: 12px;
-        align-items: flex-end;
+/* Plan Comparison Dialog */
+.sponsor-modal-card.plan-comparison-card {
+    width: min(100%, 760px);
+    max-height: calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    padding: 26px 24px 22px;
+    text-align: left;
+}
+
+.plan-comparison-card .modal-eyebrow {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 4px;
+}
+
+.plan-comparison-card h3 {
+    margin: 4px 40px 6px 0;
+    font-size: 1.35rem;
+    font-weight: 800;
+}
+
+.plan-comparison-card > p {
+    color: var(--muted);
+    font-size: 0.88rem;
+    margin: 0 0 14px;
+}
+
+/* 2-Column Plan Comparison Grid */
+.plan-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: stretch;
+    margin: 14px 0;
+}
+
+.plan-card {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 16px 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg);
+}
+
+.plan-card-plus {
+    border-color: rgba(108, 92, 231, 0.5) !important;
+    background: linear-gradient(180deg, rgba(108, 92, 231, 0.06), transparent) !important;
+    box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.15);
+}
+
+.plan-card h4 {
+    margin: 0 0 6px;
+    font-size: 1.05rem;
+    color: var(--ink);
+}
+
+.plan-card p {
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    margin: 0 0 10px;
+}
+
+.plan-card .modal-feature-list {
+    margin: 0 0 14px;
+    padding-left: 18px;
+    font-size: 0.82rem;
+    color: var(--ink);
+    line-height: 1.5;
+    flex: 1;
+}
+
+.plan-card-action {
+    margin-top: auto;
+    padding-top: 8px;
+}
+
+.plan-card-btn {
+    width: 100%;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Detailed Comparison Matrix */
+.plan-matrix {
+    display: grid;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    margin: 12px 0 10px;
+}
+
+.plan-matrix > strong { font-size: 0.86rem; color: var(--ink); }
+
+.plan-matrix div {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding-top: 5px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+.plan-matrix b { color: var(--ink); }
+
+.plan-comparison-card .modal-callout {
+    margin: 10px 0 0;
+    text-align: center;
+    font-size: 0.74rem;
+    color: var(--muted);
+}
+
+/* Responsive Overrides (Mobile Portrait) */
+@media (max-width: 680px) {
+    .plan-cards {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
 
-    .sponsor-modal-card {
-        width: 100%;
-        max-height: 88dvh;
-        border-radius: 20px 20px 0 0;
-        padding: 22px 16px calc(16px + env(safe-area-inset-bottom));
+    .sponsor-media-wrap {
+        height: 160px;
     }
 }
 
-/* ================= MOBILE DASHBOARD DENSIFICATION (<= 640px) ================= */
-@media (max-width: 640px) {
-    /* 1. Tighten page shell and hub gaps */
-    .page {
-        padding: 12px 14px 24px !important;
+/* Responsive Overrides (Phone Landscape) */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 950px) {
+    .sponsor-media-wrap {
+        height: 120px;
     }
 
-    .dashboard-page-shell {
-        padding: 0 0 24px !important;
-        gap: 10px !important;
-    }
-
-    .dashboard-hub {
-        gap: 10px !important;
-    }
-
-    /* 2. Compact Hero Banner */
-    .hero-banner {
-        padding: 14px 16px !important;
-    }
-
-    .hero-banner-main {
-        gap: 8px !important;
-    }
-
-    .hero-greeting {
-        font-size: 1.15rem !important;
-    }
-
-    .hero-progress-section {
-        margin-top: 10px !important;
-    }
-
-    /* 3. Streamlined Continue Learning Card */
-    .resume-card {
-        padding: 14px 16px !important;
-    }
-
-    .resume-body {
-        gap: 10px !important;
-    }
-
-    .resume-body h2 {
-        font-size: 1.05rem !important;
-    }
-
-    .resume-body .btn {
-        min-height: 42px !important;
-        padding: 8px 14px !important;
-        font-size: 0.88rem !important;
-    }
-
-    /* 4. Compact Course Progress */
-    .section-header {
-        margin: 6px 0 4px !important;
-    }
-
-    .section-header h2 {
-        font-size: 1.05rem !important;
-    }
-
-    .trajectory-card {
-        padding: 12px 14px !important;
-    }
-
-    /* 5. Low-Profile Sponsor Strip */
-    .mobile-sponsor-strip {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        margin: 2px 0 6px;
-    }
-
-    .sponsor-strip-text {
-        flex: 1;
-        min-width: 0;
-        font-size: 0.76rem;
-        color: var(--muted);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .sponsor-strip-text strong {
-        color: var(--ink);
-    }
-
-    .mobile-sponsor-strip .btn {
-        padding: 2px 8px;
-        min-height: 32px;
-        font-size: 0.74rem;
-        flex-shrink: 0;
+    .sponsor-modal-poster {
+        object-position: center 28%;
     }
 }
