@@ -90,6 +90,29 @@
     .activity-copy span { display: block; overflow: hidden; color: var(--muted); font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
     .activity-arrow { flex-shrink: 0; color: var(--muted); font-size: 1.15rem; }
 
+    .activity-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .activity-btn {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.1s ease, background-color 0.15s ease;
+        line-height: 1.2;
+    }
+    .activity-btn.primary { background: var(--primary); color: #ffffff; }
+    .activity-btn.primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .activity-btn.secondary { background: var(--bg); color: var(--ink); border: 1px solid var(--border); }
+    .activity-btn.secondary:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); }
+
+    @media (max-width: 480px) {
+        .lesson-activity.has-attempt { flex-wrap: wrap; gap: 12px; }
+        .lesson-activity.has-attempt .activity-actions { width: 100%; justify-content: flex-end; }
+    }
+
     /* 4. CHAPTER REVIEW READER (RIGHT PANE) */
     .lesson-reader-pane {
         width: 0; height: 100%; min-width: 0; flex: 0 0 auto; display: flex; flex-direction: column;
@@ -345,14 +368,32 @@
                 </div>
 
                 {% if has_quiz %}
-                    <a href="{% url 'courses:chapter_quiz' chapter.pk %}" class="lesson-activity quiz-activity">
-                        <div class="activity-icon" aria-hidden="true">⚡</div>
-                        <div class="activity-copy">
-                            <strong>Quiz</strong>
-                            <span>{{ question_count }} question{{ question_count|pluralize }}</span>
+                    {% if latest_attempt %}
+                        <!-- Displays when the learner has previously completed an attempt -->
+                        <div class="lesson-activity quiz-activity has-attempt">
+                            <div class="activity-icon" aria-hidden="true">⚡</div>
+                            <div class="activity-copy">
+                                <strong>Quiz</strong>
+                                <span>Score: {{ latest_attempt.score|floatformat:0 }}/{{ latest_attempt.total_questions }}</span>
+                            </div>
+                            <div class="activity-actions">
+                                <a href="{% url 'courses:chapter_quiz' chapter.pk %}" class="activity-btn primary" title="Retake Quiz">Retake</a>
+                                {% if latest_attempt.review_data.review_items %}
+                                    <a href="{% url 'courses:chapter_quiz' chapter.pk %}?view=review" class="activity-btn secondary" title="Review Last Results">Review</a>
+                                {% endif %}
+                            </div>
                         </div>
-                        <span class="activity-arrow" aria-hidden="true">&rarr;</span>
-                    </a>
+                    {% else %}
+                        <!-- Displays for first-time quiz takers -->
+                        <a href="{% url 'courses:chapter_quiz' chapter.pk %}" class="lesson-activity quiz-activity">
+                            <div class="activity-icon" aria-hidden="true">⚡</div>
+                            <div class="activity-copy">
+                                <strong>Quiz</strong>
+                                <span>{{ question_count }} question{{ question_count|pluralize }}</span>
+                            </div>
+                            <span class="activity-arrow" aria-hidden="true">&rarr;</span>
+                        </a>
+                    {% endif %}
                 {% else %}
                     <div class="lesson-activity quiz-activity disabled" title="No quiz generated yet" aria-disabled="true">
                         <div class="activity-icon" aria-hidden="true">⚡</div>
