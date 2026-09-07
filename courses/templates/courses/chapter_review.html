@@ -126,12 +126,59 @@
         transition: width 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease 0.08s, transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), border-width 0s, visibility 0s;
     }
 
-    .reader-header { flex-shrink: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 24px 28px; border-bottom: 1px solid var(--border); }
+    .reader-header { flex-shrink: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 24px 28px 18px; border-bottom: 1px solid var(--border); }
     .reader-heading { min-width: 0; }
     .reader-heading small { display: block; margin-bottom: 4px; color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
     .reader-heading h2 { margin: 0; overflow-wrap: anywhere; color: var(--ink); font-size: 1.35rem; line-height: 1.3; }
     .reader-close { width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--muted); font-size: 1.2rem; cursor: pointer; transition: color 0.16s ease, border-color 0.16s ease, background-color 0.16s ease; }
     .reader-close:hover { border-color: var(--danger); background: rgba(239, 68, 68, 0.08); color: var(--danger); }
+
+    /* SPRINT G3: STICKY CHIP NAVIGATION BAR */
+    .reader-section-nav {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 24px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        z-index: 10;
+    }
+    .reader-section-nav::-webkit-scrollbar { display: none; }
+
+    .reader-nav-chip {
+        flex-shrink: 0;
+        min-height: 40px;
+        padding: 8px 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        line-height: 1.2;
+        box-sizing: border-box;
+    }
+    .reader-nav-chip:hover {
+        border-color: var(--primary);
+        color: var(--ink);
+    }
+    .reader-nav-chip.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #ffffff;
+        box-shadow: 0 2px 8px rgba(108, 92, 231, 0.35);
+    }
 
     .reader-content { min-height: 0; flex: 1; overflow-y: auto; padding: 34px clamp(24px, 3.5vw, 56px) 44px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
     .reader-content-inner { width: 100%; max-width: 760px; margin: 0 auto; color: var(--ink); font-size: 1.06rem; line-height: 1.8; }
@@ -143,11 +190,12 @@
     .reader-content::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
     /* 5. CRAM WIDGET STYLES */
-    .cram-overview-card { background: rgba(108, 92, 231, 0.08); border: 1px solid rgba(108, 92, 231, 0.25); border-radius: 14px; padding: 18px 20px; margin-bottom: 24px; }
+    .cram-overview-card { background: rgba(108, 92, 231, 0.08); border: 1px solid rgba(108, 92, 231, 0.25); border-radius: 14px; padding: 18px 20px; margin-bottom: 24px; scroll-margin-top: 16px; }
     .cram-badge { display: inline-block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary); margin-bottom: 6px; }
     .cram-lead { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin: 0; color: var(--ink); }
 
-    .cram-section { margin-bottom: 32px; }
+    .cram-section { margin-bottom: 32px; scroll-margin-top: 16px; }
+    .cram-section-group { margin-bottom: 32px; scroll-margin-top: 16px; }
     .cram-section-title { font-size: 1.15rem; font-weight: 800; margin: 0 0 14px; color: var(--ink); }
 
     .cram-facts-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -197,6 +245,7 @@
             transform: none;
         }
         .reader-header { padding: 16px 20px; }
+        .reader-section-nav { padding: 8px 16px; }
         .reader-close { width: 44px; height: 44px; font-size: 1.35rem; }
         .reader-content { padding: 24px 20px 48px; }
     }
@@ -251,6 +300,8 @@
         }
 
         .lesson-hub { width: 100%; max-width: none; }
+        .reader-section-nav { padding: 8px 14px; }
+        .reader-nav-chip { min-height: 44px; }
         .theme-toggle-fab { right: 16px; bottom: calc(78px + env(safe-area-inset-bottom)); }
     }
 
@@ -417,200 +468,208 @@
             <button type="button" class="reader-close" id="close-reader-btn" aria-label="Close chapter review" title="Close chapter review">✕</button>
         </header>
 
+        <!-- SPRINT G3: STICKY CHIP NAVIGATION BAR -->
+        <nav class="reader-section-nav" id="reader-section-nav" aria-label="Section navigation" hidden></nav>
+
         <div class="reader-content" id="reader-content" tabindex="0">
-            <article class="reader-content-inner">
-                <div class="cram-overview-card">
+            <!-- Broad Fallback Destination for General Hash Links -->
+            <article id="chapter-review-content" class="reader-content-inner">
+                
+                <!-- 1. OVERVIEW -->
+                <div class="cram-overview-card" id="overview" data-review-section data-section-label="Overview">
                     <span class="cram-badge">{{ chapter_data.week_label|default:"Chapter Focus" }}</span>
                     <p class="cram-lead">{{ chapter_overview }}</p>
                 </div>
 
-                {% if chapter_data.sections %}
-                    <!-- Learning Objectives -->
-                    {% if chapter.source_data.learning_objectives %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">🎯 Learning Objectives</h3>
-                            <ul class="cram-facts-list">
-                                {% for obj in chapter.source_data.learning_objectives %}
-                                    <li>{{ obj }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    {% endif %}
-
-                    <!-- Sections Flow -->
-                    {% for section in chapter.source_data.sections %}
-                        <div class="cram-section section-block">
-                            <h3 class="section-heading">{{ forloop.counter }}. {{ section.title }}</h3>
-                            {% if section.introduction %}
-                                <p class="section-intro">{{ section.introduction }}</p>
-                            {% endif %}
-
-                            {% for concept in section.concepts %}
-                                <div class="concept-card">
-                                    <div class="concept-header">
-                                        <span class="concept-term">{{ concept.term }}</span>
-                                    </div>
-                                    <p class="concept-formal"><strong>Definition:</strong> {{ concept.formal_definition }}</p>
-                                    <div class="concept-simple">
-                                        <strong>In Simple Words:</strong> {{ concept.simple_explanation }}
-                                    </div>
-                                    {% if concept.analogy %}
-                                        <div class="concept-analogy">
-                                            💡 <strong>Analogy:</strong> {{ concept.analogy }}
-                                        </div>
-                                    {% endif %}
-                                </div>
+                <!-- 2. LEARNING OBJECTIVES (Independent) -->
+                {% if chapter_data.learning_objectives %}
+                    <div class="cram-section" id="learning-objectives" data-review-section data-section-label="Objectives">
+                        <h3 class="cram-section-title">🎯 Learning Objectives</h3>
+                        <ul class="cram-facts-list">
+                            {% for obj in chapter_data.learning_objectives %}
+                                <li>{{ obj }}</li>
                             {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
 
-                            {% if section.key_points %}
-                                <ul class="cram-facts-list" style="margin-top: 14px;">
-                                    {% for pt in section.key_points %}
-                                        <li>{{ pt }}</li>
-                                    {% endfor %}
-                                </ul>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
+                <!-- 3. CONCEPTS / SECTIONS (Independent) -->
+                {% if chapter_data.sections %}
+                    <div class="cram-section-group" id="concepts" data-review-section data-section-label="Concepts">
+                        {% for section in chapter_data.sections %}
+                            <div class="cram-section section-block">
+                                <h3 class="section-heading">{{ forloop.counter }}. {{ section.title }}</h3>
+                                {% if section.introduction %}
+                                    <p class="section-intro">{{ section.introduction }}</p>
+                                {% endif %}
 
-                    <!-- Comparison Matrices -->
-                    {% if chapter.source_data.comparisons %}
-                        {% for comp in chapter.source_data.comparisons %}
-                            <div class="cram-section">
-                                <h3 class="cram-section-title">⚖️ {{ comp.title }}</h3>
-                                <div class="comparison-table-wrap">
-                                    <table class="cram-comparison-table">
-                                        <thead>
-                                            <tr>
-                                                {% for col in comp.columns %}
-                                                    <th>{{ col }}</th>
-                                                {% endfor %}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for row in comp.rows %}
-                                                <tr>
-                                                    <td><strong>{{ row.criterion }}</strong></td>
-                                                    {% for val in row.values %}
-                                                        <td>{{ val }}</td>
-                                                    {% endfor %}
-                                                </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                {% for concept in section.concepts %}
+                                    <div class="concept-card">
+                                        <div class="concept-header">
+                                            <span class="concept-term">{{ concept.term }}</span>
+                                        </div>
+                                        <p class="concept-formal"><strong>Definition:</strong> {{ concept.formal_definition }}</p>
+                                        <div class="concept-simple">
+                                            <strong>In Simple Words:</strong> {{ concept.simple_explanation }}
+                                        </div>
+                                        {% if concept.analogy %}
+                                            <div class="concept-analogy">
+                                                💡 <strong>Analogy:</strong> {{ concept.analogy }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+
+                                {% if section.key_points %}
+                                    <ul class="cram-facts-list" style="margin-top: 14px;">
+                                        {% for pt in section.key_points %}
+                                            <li>{{ pt }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
                             </div>
                         {% endfor %}
-                    {% endif %}
+                    </div>
+                {% elif chapter_data.key_terms %}
+                    <div class="cram-section" id="concepts" data-review-section data-section-label="Key Terms">
+                        <h3 class="cram-section-title">Key Terms</h3>
+                        {% for term in chapter_data.key_terms %}
+                            <div class="concept-card">
+                                <div class="concept-term">{{ term.term }}</div>
+                                <p class="concept-formal">{{ term.definition }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
-                    <!-- High-Yield Enumerations -->
-                    {% if chapter.source_data.enumerations %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">📋 High-Yield Enumerations</h3>
-                            <div class="enum-grid">
-                                {% for enum in chapter.source_data.enumerations %}
-                                    <div class="enum-card">
-                                        <div class="enum-header">
-                                            <strong>{{ enum.title }}</strong>
-                                            {% if enum.memory_cue %}<span class="enum-cue">{{ enum.memory_cue }}</span>{% endif %}
-                                        </div>
-                                        <p class="enum-prompt">{{ enum.prompt }}</p>
-                                        <ol class="enum-items">
-                                            {% for it in enum.items %}
-                                                <li>{{ it }}</li>
+                <!-- 4. COMPARISON MATRICES (Independent) -->
+                {% if chapter_data.comparisons %}
+                    <div class="cram-section" id="comparisons" data-review-section data-section-label="Comparisons">
+                        {% for comp in chapter_data.comparisons %}
+                            <h3 class="cram-section-title">⚖️ {{ comp.title }}</h3>
+                            <div class="comparison-table-wrap">
+                                <table class="cram-comparison-table">
+                                    <thead>
+                                        <tr>
+                                            {% for col in comp.columns %}
+                                                <th>{{ col }}</th>
                                             {% endfor %}
-                                        </ol>
-                                    </div>
-                                {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in comp.rows %}
+                                            <tr>
+                                                <td><strong>{{ row.criterion }}</strong></td>
+                                                {% for val in row.values %}
+                                                    <td>{{ val }}</td>
+                                                {% endfor %}
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
-                    {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
-                    <!-- Common Traps -->
-                    {% if chapter.source_data.common_confusions %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">⚠️ Common Exam Traps</h3>
-                            <div class="confusions-grid">
-                                {% for trap in chapter.source_data.common_confusions %}
-                                    <div class="confusion-card">
-                                        <div class="confusion-vs">
-                                            <span class="badge-vs">{{ trap.concept_a }}</span>
-                                            <span class="vs-divider">vs</span>
-                                            <span class="badge-vs">{{ trap.concept_b }}</span>
-                                        </div>
-                                        <p class="confusion-diff">{{ trap.difference }}</p>
+                <!-- 5. HIGH-YIELD ENUMERATIONS (Independent) -->
+                {% if chapter_data.enumerations %}
+                    <div class="cram-section" id="enumerations" data-review-section data-section-label="Enumerations">
+                        <h3 class="cram-section-title">📋 Key Enumerations</h3>
+                        <div class="enum-grid">
+                            {% for enum in chapter_data.enumerations %}
+                                <div class="enum-card">
+                                    <div class="enum-header">
+                                        <strong>{{ enum.title }}</strong>
+                                        {% if enum.memory_cue %}<span class="enum-cue">{{ enum.memory_cue }}</span>{% endif %}
                                     </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    {% endif %}
-
-                    <!-- Takeaways -->
-                    {% if chapter.source_data.key_takeaways %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">📌 Key Takeaways</h3>
-                            <ul class="cram-facts-list">
-                                {% for take in chapter.source_data.key_takeaways %}
-                                    <li>{{ take }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    {% endif %}
-                {% else %}
-                    {% if chapter_data.key_terms %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">Key Terms</h3>
-                            {% for term in chapter_data.key_terms %}
-                                <div class="concept-card">
-                                    <div class="concept-term">{{ term.term }}</div>
-                                    <p class="concept-formal">{{ term.definition }}</p>
+                                    <p class="enum-prompt">{{ enum.prompt }}</p>
+                                    <ol class="enum-items">
+                                        {% for it in enum.items %}
+                                            <li>{{ it }}</li>
+                                        {% endfor %}
+                                    </ol>
                                 </div>
                             {% endfor %}
                         </div>
-                    {% endif %}
+                    </div>
+                {% endif %}
 
-                    {% if chapter_data.quick_facts %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">Quick Facts</h3>
-                            <ul class="cram-facts-list">
-                                {% for fact in chapter_data.quick_facts %}<li>{{ fact }}</li>{% endfor %}
-                            </ul>
+                <!-- 6. COMMON CONFUSIONS (Independent) -->
+                {% if chapter_data.common_confusions %}
+                    <div class="cram-section" id="common-confusions" data-review-section data-section-label="Common Confusions">
+                        <h3 class="cram-section-title">⚠️ Common Confusions</h3>
+                        <div class="confusions-grid">
+                            {% for trap in chapter_data.common_confusions %}
+                                <div class="confusion-card">
+                                    <div class="confusion-vs">
+                                        <span class="badge-vs">{{ trap.concept_a }}</span>
+                                        <span class="vs-divider">vs</span>
+                                        <span class="badge-vs">{{ trap.concept_b }}</span>
+                                    </div>
+                                    <p class="confusion-diff">{{ trap.difference }}</p>
+                                </div>
+                            {% endfor %}
                         </div>
-                    {% endif %}
+                    </div>
+                {% endif %}
 
-                    {% if chapter_data.timeline %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">Timeline</h3>
-                            <ul class="cram-facts-list">
-                                {% for item in chapter_data.timeline %}<li>{{ item }}</li>{% endfor %}
-                            </ul>
-                        </div>
-                    {% endif %}
+                <!-- 7. KEY TAKEAWAYS (Independent) -->
+                {% if chapter_data.key_takeaways %}
+                    <div class="cram-section" id="takeaways" data-review-section data-section-label="Takeaways">
+                        <h3 class="cram-section-title">📌 Key Takeaways</h3>
+                        <ul class="cram-facts-list">
+                            {% for take in chapter_data.key_takeaways %}
+                                <li>{{ take }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
 
-                    {% if chapter_data.real_world_examples %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">Real-World Examples</h3>
-                            <ul class="cram-facts-list">
-                                {% for example in chapter_data.real_world_examples %}<li>{{ example }}</li>{% endfor %}
-                            </ul>
-                        </div>
-                    {% endif %}
+                <!-- LEGACY / EXTRA FALLBACK CONTENT -->
+                {% if chapter_data.quick_facts %}
+                    <div class="cram-section" id="quick-facts" data-review-section data-section-label="Quick Facts">
+                        <h3 class="cram-section-title">Quick Facts</h3>
+                        <ul class="cram-facts-list">
+                            {% for fact in chapter_data.quick_facts %}<li>{{ fact }}</li>{% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
 
-                    {% if chapter_data.analogy %}
-                        <div class="cram-section">
-                            <h3 class="cram-section-title">Analogy</h3>
-                            <p class="section-intro">{{ chapter_data.analogy.explanation|default:chapter_data.analogy }}</p>
-                        </div>
-                    {% endif %}
+                {% if chapter_data.timeline %}
+                    <div class="cram-section" id="timeline" data-review-section data-section-label="Timeline">
+                        <h3 class="cram-section-title">Timeline</h3>
+                        <ul class="cram-facts-list">
+                            {% for item in chapter_data.timeline %}<li>{{ item }}</li>{% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
 
-                    {% if not chapter_data.key_terms and not chapter_data.quick_facts and not chapter_data.timeline and not chapter_data.real_world_examples and not chapter_data.analogy %}
-                        <p>{{ chapter_overview|linebreaks }}</p>
-                    {% endif %}
+                {% if chapter_data.real_world_examples %}
+                    <div class="cram-section" id="examples" data-review-section data-section-label="Examples">
+                        <h3 class="cram-section-title">Real-World Examples</h3>
+                        <ul class="cram-facts-list">
+                            {% for example in chapter_data.real_world_examples %}<li>{{ example }}</li>{% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                {% if chapter_data.analogy %}
+                    <div class="cram-section" id="analogy" data-review-section data-section-label="Analogy">
+                        <h3 class="cram-section-title">Analogy</h3>
+                        <p class="section-intro">{{ chapter_data.analogy.explanation|default:chapter_data.analogy }}</p>
+                    </div>
+                {% endif %}
+
+                {% if not chapter_data.sections and not chapter_data.key_terms and not chapter_data.quick_facts and not chapter_data.timeline and not chapter_data.real_world_examples and not chapter_data.analogy and not chapter_data.enumerations and not chapter_data.common_confusions and not chapter_data.comparisons %}
+                    <p>{{ chapter_overview|linebreaks }}</p>
                 {% endif %}
             </article>
         </div>
     </aside>
 </div>
 
+<!-- Reader Toggle & Reading Completion Tracking -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const workspace = document.getElementById('review-workspace');
@@ -620,11 +679,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeReaderBtn = document.getElementById('close-reader-btn');
     const completeBtn = document.getElementById('mark-complete-btn');
 
-    // Clean DOM-based state lookup (No raw template tags inside JS logic)
     let hasReadToEnd = (completeBtn && completeBtn.dataset.hasRead === 'true') ||
                        (completeBtn && completeBtn.classList.contains('is-complete'));
 
-    // Fill progress bar width
     document.querySelectorAll('[data-progress]').forEach(el => {
         el.style.width = el.getAttribute('data-progress') + '%';
     });
@@ -741,4 +798,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
+
+<!-- Sprint G3: Sticky Navigation & URL Hash Deep-Linking -->
+<script src="{% static 'courses/js/chapter_review.js' %}?v=1"></script>
 {% endblock %}
