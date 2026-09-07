@@ -83,8 +83,8 @@ Assessment features include:
 The current progression policy uses:
 
 ```text
-Guided completion: Complete the lesson and pass the quiz at 70% or higher
-Test-out completion: Score 85% or higher without completing the lesson
+Guided completion: Read and mark the lesson complete, then score 75% or higher on the quiz
+Test-out completion: Score 75% or higher on the quiz without completing the lesson
 ```
 
 ### Plans, quotas, and course credits
