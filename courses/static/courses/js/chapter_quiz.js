@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function buildReviewModal() {
         if (!reviewContainer || !serverReviewData || !serverReviewData.review_items) return;
-        const reviewUrlBase = document.getElementById('return-chapter-btn')?.getAttribute('href') || '';
+        const reviewUrlBase = document.getElementById('quiz-exit-link')?.getAttribute('href') || '';
 
         reviewContainer.innerHTML = serverReviewData.review_items.map((item, idx) => {
             const statusClass = ['correct', 'partial', 'incorrect'].includes(item.result_state) 
@@ -368,9 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const statusLabel = statusClass === 'correct' 
                 ? 'Correct' 
                 : (statusClass === 'partial' ? 'Partially Correct' : 'Needs Review');
-            
-            const anchor = escapeHtml(item.review_anchor || 'overview');
-            const topicHref = `${reviewUrlBase}#${anchor}`;
 
             let detailHtml = '';
 
@@ -470,16 +467,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function closeReviewModal() {
-        if (reviewModal) {
+    // ================= REVIEW MODAL DISMISS & ESCAPE =================
+    const urlParams = new URLSearchParams(window.location.search);
+    const isReviewMode = urlParams.get('view') === 'review';
+    const chapterReviewUrl = document.getElementById('quiz-exit-link')?.getAttribute('href') || '';
+    const backToScoreBtn = document.getElementById('back-to-results-btn');
+
+    function exitReviewDrawer() {
+        if (isReviewMode && chapterReviewUrl) {
+            window.location.href = chapterReviewUrl;
+        } else if (reviewModal) {
             reviewModal.hidden = true;
             reviewModal.classList.remove('is-active');
             document.body.classList.remove('modal-open');
         }
     }
 
-    document.getElementById('close-review-btn')?.addEventListener('click', closeReviewModal);
-    document.getElementById('back-to-results-btn')?.addEventListener('click', closeReviewModal);
+    document.getElementById('close-review-btn')?.addEventListener('click', exitReviewDrawer);
+    backToScoreBtn?.addEventListener('click', exitReviewDrawer);
+
+    reviewModal?.addEventListener('click', (e) => {
+        if (e.target === reviewModal) exitReviewDrawer();
+    });
 
     // ================= KEYBOARD SHORTCUTS =================
     document.addEventListener('keydown', (event) => {
@@ -514,11 +523,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Enter submits when ready (avoids interrupting typing in Enumeration)
+            // Enter submits when ready (advances fields like Tab for Enumeration)
             if (isEnter) {
                 if (question.type === 'enumeration' && isTyping) {
+                    if (activeEl?.classList.contains('enumeration-input')) {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const enumInputs = Array.from(wrap.querySelectorAll('.enumeration-input'));
+                        const inputIdx = enumInputs.indexOf(activeEl);
+
+                        // If not on the last input, advance focus to the next field
+                        if (inputIdx !== -1 && inputIdx < enumInputs.length - 1) {
+                            enumInputs[inputIdx + 1].focus();
+                            return;
+                        }
+
+                        // On the last input: submit if an answer is provided, otherwise blur
+                        if (inputIdx === enumInputs.length - 1) {
+                            if (!actionBtn.disabled) {
+                                activeEl.blur();
+                                handleCheckAnswer();
+                            }
+                            return;
+                        }
+                    }
                     return;
                 }
+
                 if (!actionBtn.disabled) {
                     event.preventDefault();
                     event.stopPropagation();
@@ -539,64 +571,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ================= REVIEW MODAL NAVIGATION & DISMISS =================
-    const urlParams = new URLSearchParams(window.location.search);
-    const isReviewMode = urlParams.get('view') === 'review';
-    const chapterReviewUrl = document.getElementById('quiz-exit-link')?.getAttribute('href') || '';
-    const backToScoreBtn = document.getElementById('back-to-results-btn');
-
-    function exitReviewDrawer() {
-        if (isReviewMode && chapterReviewUrl) {
-            window.location.href = chapterReviewUrl;
-        } else {
-            if (reviewModal) {
-                reviewModal.hidden = true;
-                reviewModal.classList.remove('is-active');
-                document.body.classList.remove('modal-open');
-            }
-        }
-    }
-
-    document.getElementById('close-review-btn')?.addEventListener('click', exitReviewDrawer);
-    backToScoreBtn?.addEventListener('click', exitReviewDrawer);
-
-    // Clicking outside modal content on backdrop also dismisses properly
-    reviewModal?.addEventListener('click', (e) => {
-        if (e.target === reviewModal) exitReviewDrawer();
-    });
-
     // ================= VIEW ROUTING (?view=review vs New Quiz) =================
     let preloadedReview = null;
     const reviewDataEl = document.getElementById('latest-review-data');
-    if (reviewDataEl && reviewDataEl.textContent) {
+    if (reviewDataEl && reviewDataEl.textContent.trim()) {
         try {
             preloadedReview = JSON.parse(reviewDataEl.textContent);
+            if (typeof preloadedReview === 'string') {
+                preloadedReview = JSON.parse(preloadedReview);
+            }
         } catch (e) {
             console.error('Failed to parse preloaded review data:', e);
         }
     }
 
-    if (isReviewMode && preloadedReview && preloadedReview.review_items && preloadedReview.review_items.length > 0) {
-        serverReviewData = preloadedReview;
-
-        // 1. Hide quiz-runner and score sheet so background stays completely blank
+    if (isReviewMode) {
+        // 1. Hide quiz controls immediately
         actionBtn.classList.add('is-hidden');
+        actionBtn.style.display = 'none';
         if (progressFill && progressFill.parentElement) {
             progressFill.parentElement.style.display = 'none';
         }
         setText('quiz-progress-label', '');
 
-        // 2. Hide "Back to Score" button in review mode since user came from Chapter Review
-        if (backToScoreBtn) {
-            backToScoreBtn.style.display = 'none';
-        }
+        if (preloadedReview && Array.isArray(preloadedReview.review_items) && preloadedReview.review_items.length > 0) {
+            serverReviewData = preloadedReview;
 
-        // 3. Immediately launch Answer Review drawer
-        buildReviewModal();
-        if (reviewModal) {
-            reviewModal.hidden = false;
-            reviewModal.classList.add('is-active');
-            document.body.classList.add('modal-open');
+            if (backToScoreBtn) {
+                backToScoreBtn.style.display = 'none';
+            }
+
+            // Immediately launch Answer Review drawer
+            buildReviewModal();
+            if (reviewModal) {
+                reviewModal.hidden = false;
+                reviewModal.classList.add('is-active');
+                document.body.classList.add('modal-open');
+            }
+        } else {
+            // Fallback when review data is missing
+            wrap.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <div style="font-size: 2.5rem; margin-bottom: 12px;">📋</div>
+                    <h2 style="margin: 0 0 8px; font-size: 1.35rem; color: var(--ink);">Review Unavailable</h2>
+                    <p style="margin: 0 0 24px; color: var(--muted); font-size: 0.95rem;">
+                        Detailed answer breakdown is not available for this attempt.
+                    </p>
+                    <a href="${chapterReviewUrl || '../review/'}" class="btn btn-secondary" style="min-height: 44px; display: inline-flex; align-items: center;">
+                        &larr; Back to Chapter Review
+                    </a>
+                </div>
+            `;
         }
     } else if (quiz.questions && quiz.questions.length > 0) {
         renderQuestion();
