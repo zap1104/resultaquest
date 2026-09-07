@@ -33,17 +33,23 @@
     }
 
     .quiz-page-container {
-        max-width: 760px;
+        width: 100%;
+        max-width: 900px;
         margin: 0 auto;
         padding: 0 20px 100px;
+        box-sizing: border-box;
     }
 
     /* ================= 2. HEADER & PROGRESS ================= */
     .quiz-focus-header {
+        width: 100%;
+        max-width: 900px;
         display: flex;
         align-items: center;
-        padding: 24px 0 4px;
         gap: 20px;
+        margin-inline: auto;
+        padding: 24px 0 4px;
+        box-sizing: border-box;
     }
 
     .quiz-exit-btn {
@@ -60,8 +66,9 @@
     .quiz-exit-btn:hover { color: var(--danger); }
 
     .quiz-progress-top {
-        flex: 1;
-        height: 14px;
+        min-width: 0;
+        flex: 1 1 auto;
+        height: 18px;
         background: var(--surface-glass);
         border-radius: 999px;
         overflow: hidden;
@@ -80,7 +87,19 @@
         color: var(--muted);
         font-size: 0.85rem;
         font-weight: 700;
-        margin: 6px 0 0;
+        margin: 8px 0 0;
+        letter-spacing: 0.02em;
+        transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .quiz-progress-label.is-complete {
+        font-size: 1.15rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-top: 10px;
+        text-shadow: 0 0 16px rgba(0, 194, 168, 0.45);
     }
 
     /* ================= 3. QUESTION CARD & TAGS ================= */
@@ -411,13 +430,18 @@
 
     /* ================= 8. RESULT SHEET & REVIEW DRAWER ================= */
     .result-sheet {
-        position: fixed; bottom: 0; left: 0; width: 100%;
+        position: fixed; bottom: 0; left: 0; right: 0;
+        z-index: 1400;
+        max-width: 600px;
+        margin: 0 auto;
+        width: auto;
         background: var(--surface); border-top: 1px solid var(--border);
-        border-radius: 28px 28px 0 0; padding: 32px 24px 48px;
-        box-shadow: 0 -12px 40px rgba(0,0,0,0.3); transform: translateY(110%);
-        transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 1000;
-        display: flex; flex-direction: column; align-items: center; gap: 18px;
+        border-radius: 32px 32px 0 0; padding: 32px 28px calc(32px + env(safe-area-inset-bottom));
+        box-shadow: 0 -18px 56px rgba(0,0,0,0.45); transform: translateY(110%);
+        transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex; flex-direction: column; align-items: center; gap: 20px;
     }
+
     .result-sheet.open { transform: translateY(0); }
     .sheet-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 36px; margin: 8px 0 4px; }
     .sheet-stat-box { text-align: center; }
@@ -575,6 +599,26 @@
         </section>
     </div>
 
+    <div class="result-presentation" id="result-presentation">
+        <div class="result-mascot-stage" aria-hidden="true">
+            <img
+                id="result-mascot-img"
+                class="result-mascot-img"
+                src="{% static 'courses/images/mascot_result_review.png' %}"
+                alt=""
+            />
+        </div>
+
+        <div class="result-guidance" role="status" aria-live="polite">
+            <strong class="result-guidance-title" id="result-guidance-title">
+                Review recommended
+            </strong>
+            <p class="result-guidance-message" id="result-guidance-message">
+                Review the chapter concepts, then retake the quiz when ready.
+            </p>
+        </div>
+    </div>
+
     {{ latest_attempt.review_data|json_script:"latest-review-data" }}
 
     <!-- Quiz Data Contract -->
@@ -606,7 +650,7 @@
             ]
         }
     </script>
-    <script src="{% static 'courses/js/chapter_quiz.js' %}?v=4"></script>
+    <script src="{% static 'courses/js/chapter_quiz.js' %}?v=5"></script>
 {% else %}
     <div style="padding: 60px 20px; text-align: center;">
         <p class="empty-state">No quiz questions yet for this chapter.</p>
