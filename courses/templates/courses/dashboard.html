@@ -2,22 +2,21 @@
 {% load static %}
 
 {% block title %}Dashboard — StudyQuest{% endblock %}
+{% block page_class %}dashboard-page{% endblock %}
 
 {% block content %}
 <style>
-    /* ================= 1. PAGE CONTAINER & OVERFLOW FIX ================= */
-    /* 1. NORMALIZE PAGE PADDING WITH CLEAN TOP BREATHING ROOM */
+    /* ================= 1. BASE PAGE & SHELL ================= */
     .page {
         max-width: 1440px !important;
         width: 100% !important;
-        padding: 32px 24px 20px !important; /* 32px gives clean spacing beneath the topbar */
+        padding: 32px 24px 20px !important;
         box-sizing: border-box;
     }
 
-    /* ================= 2. 2-COLUMN FULL DASHBOARD SHELL ================= */
-    .dashboard-page-shell {
+    .dashboard-page .dashboard-page-shell {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 240px; /* Compact 240px rail prevents vertical overflow */
+        grid-template-columns: minmax(0, 1fr) 240px;
         gap: 24px;
         align-items: start;
         width: 100%;
@@ -27,16 +26,34 @@
         overflow: visible;
     }
 
-    /* Main Productivity Hub (Hero Banner + Primary Grid) */
-    .dashboard-hub {
+    .dashboard-page .dashboard-hub {
         min-width: 0;
         display: flex;
         flex-direction: column;
         gap: 16px;
     }
 
-    /* 2. MATCH AD RAIL STICKY OFFSET */
-    .dashboard-ad-rail {
+    .dashboard-page .dashboard-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 20px;
+        align-items: start;
+    }
+
+    .dashboard-page .dashboard-primary {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .dashboard-page .dashboard-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .dashboard-page .dashboard-ad-rail {
         position: sticky;
         top: 96px;
         width: 240px;
@@ -51,7 +68,44 @@
         z-index: 5;
     }
 
-    /* ================= 3. 9:16 SPONSORED PLACEMENT CARD ================= */
+    /* ================= 2. DESKTOP BUTTON & CARD LAYOUT ================= */
+    .dashboard-page .resume-card {
+        padding: 20px;
+    }
+
+    .dashboard-page .resume-body {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .dashboard-page .resume-body > :first-child {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .dashboard-page .resume-body .btn {
+        width: auto !important;
+        max-width: none !important;
+        min-height: 44px !important;
+        padding: 10px 20px !important;
+        white-space: nowrap !important;
+        font-size: 0.90rem !important;
+        flex-shrink: 0;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .resume-label-short { display: none; }
+    .resume-label-full { display: inline; }
+
+    .mobile-sponsor-strip {
+        display: none;
+    }
+
+    /* ================= 3. DESKTOP 9:16 SPONSOR CARD ================= */
     .dashboard-sponsor-card {
         border-radius: 18px;
         border: 1px solid var(--border);
@@ -79,16 +133,15 @@
     }
     .sponsor-sparkle { color: var(--gold); }
 
-    /* 3. SLIGHTLY TRIM MEDIA FRAME TO PREVENT VERTICAL OVERFLOW */
     .sponsor-media-frame {
         width: 100%;
         aspect-ratio: 9 / 16;
-        max-height: 390px; /* Trimmed slightly to compensate for the 32px top margin */
+        max-height: 390px;
         background: #080c24;
         overflow: hidden;
         position: relative;
     }
-    /* Click Shield: Blocks Chromium Hover Overlays (Enhance Video & PiP) */
+
     .sponsor-video-shield {
         position: absolute;
         inset: 0;
@@ -103,11 +156,10 @@
         display: block;
         object-fit: contain;
         background: #080c24;
-        pointer-events: none !important; /* Suppresses browser native video controls */
+        pointer-events: none !important;
         user-select: none;
     }
 
-    /* Card Copy & Actions */
     .sponsor-body {
         padding: 12px 14px 14px;
         display: flex;
@@ -169,298 +221,297 @@
         text-decoration: underline;
     }
 
-    /* ================= 4. DEMO MODALS ================= */
-    .sponsor-modal-backdrop {
-        position: fixed; inset: 0; background: rgba(10, 14, 26, 0.84);
-        backdrop-filter: blur(8px); z-index: 9999;
-        display: flex; align-items: flex-start; justify-content: center;
-        padding: max(96px, calc(env(safe-area-inset-top) + 76px)) 24px 48px;
-        box-sizing: border-box; overflow-y: auto;
-    }
-    .sponsor-modal-backdrop[hidden] { display: none; }
-
-    .sponsor-modal-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 22px;
-        padding: 32px 26px;
-        max-width: 400px;
-        width: 100%;
-        text-align: center;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    }
-    .modal-icon-wrap { font-size: 2.2rem; margin-bottom: 8px; }
-    .modal-eyebrow {
-        font-size: 0.72rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        color: var(--accent);
-        letter-spacing: 0.05em;
-    }
-    .sponsor-modal-card h3 { margin: 6px 0 10px; font-size: 1.25rem; color: var(--ink); }
-    .sponsor-modal-card p { font-size: 0.88rem; color: var(--muted); line-height: 1.5; margin: 0 0 16px; }
-    .modal-callout {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 10px 14px;
-        font-size: 0.78rem;
-        color: var(--muted);
-        margin-bottom: 20px;
-        text-align: left;
-    }
-    .modal-feature-list {
-        text-align: left;
-        margin: 0 0 20px;
-        padding-left: 18px;
-        font-size: 0.85rem;
-        color: var(--muted);
-        line-height: 1.6;
-    }
-    .plan-comparison-card { max-width: 760px; max-height: calc(100vh - 144px); overflow-y: auto; padding: 36px 26px 28px; }
-    .plan-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 14px; text-align: left; margin: 16px 0; }
-    .plan-card { min-width: 0; min-height: 308px; display: flex; flex-direction: column; padding: 20px 16px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
-    .plan-card-content { display: flex; flex: 1; flex-direction: column; }
-    .plan-card-plus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(108, 92, 231, .12); }
-    .plan-card h4 { margin: 6px 0; color: var(--ink); font-size: 1.05rem; }
-    .plan-card p { margin-bottom: 10px; }
-    .plan-card-action { margin-top: auto; padding-top: 12px; }
-    .plan-card-btn { width: 100%; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
-    .plan-matrix { display: grid; gap: 7px; text-align: left; padding: 14px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; }
-    .plan-matrix div { display: flex; justify-content: space-between; gap: 16px; padding-top: 7px; border-top: 1px solid var(--border); color: var(--muted); font-size: .82rem; }
-    .plan-matrix b { color: var(--ink); }
-    .dashboard-ad-rail::-webkit-scrollbar { width: 5px; }
-    .dashboard-ad-rail::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
-    .dashboard-ad-rail:hover::-webkit-scrollbar-thumb { background: var(--border); }
-    .topbar { position: relative; z-index: 100; }
-    @media (max-width: 1280px) { .dashboard-page-shell { padding-inline: 20px; } }
-    @media (max-width: 680px) {
-        .sponsor-modal-backdrop { padding: max(76px, calc(env(safe-area-inset-top) + 60px)) 14px 28px; }
-        .plan-comparison-card { max-height: calc(100vh - 112px); padding: 28px 16px 22px; }
-        .plan-cards { grid-template-columns: 1fr; }
-        .plan-card { min-height: auto; }
-        .plan-card-action { margin-top: 18px; }
-    }
-
-    /* Final modal override: center the dialog and keep desktop cards scrollbar-free. */
-    html.modal-open, body.modal-open { overflow: hidden !important; }
-    .sponsor-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: grid;
-        place-items: center;
-        width: 100%;
-        height: 100dvh;
-        padding: 28px 24px;
-        box-sizing: border-box;
-        overflow: hidden;
-        background: rgba(5, 10, 22, 0.88);
-        backdrop-filter: blur(9px);
-    }
-    .sponsor-modal-backdrop[hidden] { display: none !important; }
-    .sponsor-modal-card {
-        width: min(100%, 420px);
-        margin: 0;
-        padding: 30px 26px 26px;
-        box-sizing: border-box;
-        overflow: hidden;
-    }
-    .sponsor-modal-card.plan-comparison-card {
-        width: min(100%, 760px);
-        max-height: calc(100dvh - 56px);
-        padding: 30px 26px 24px;
-    }
-    .plan-comparison-card .modal-icon-wrap { margin: 0 0 6px; font-size: 2rem; line-height: 1; }
-    .plan-comparison-card > .modal-eyebrow { margin-bottom: 4px; }
-    .plan-comparison-card > h3 { margin: 4px 0 6px; font-size: 1.25rem; }
-    .plan-comparison-card > p { margin: 0 0 16px; font-size: .86rem; line-height: 1.45; }
-    .plan-cards { margin-top: 0; }
-    .plan-card { min-height: 300px; padding: 18px 16px 14px; box-sizing: border-box; }
-    .plan-card h4 { margin: 6px 0; }
-    .plan-card p { margin: 0 0 8px; font-size: .82rem; line-height: 1.4; }
-    .plan-card .modal-feature-list { margin: 8px 0 12px; font-size: .78rem; line-height: 1.5; }
-    .plan-card-action { margin-top: auto; padding-top: 10px; }
-    .plan-card-btn { width: 100%; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
-    .plan-matrix { margin-top: 14px; padding: 12px 14px; }
-    .plan-matrix > strong { display: block; margin-bottom: 5px; font-size: .9rem; }
-    .plan-matrix > div { padding: 6px 0; font-size: .75rem; }
-    .plan-comparison-card > .modal-callout { margin: 12px 0 10px; padding: 9px 12px; font-size: .7rem; line-height: 1.4; }
-    #close-plus-modal-btn { min-height: 38px; margin: 0; padding: 8px 14px; }
-    @media (max-height: 850px) and (min-width: 681px) {
-        .sponsor-modal-backdrop { padding: 18px 20px; }
-        .sponsor-modal-card.plan-comparison-card { max-height: calc(100dvh - 36px); padding: 22px 22px 18px; }
-        .plan-comparison-card .modal-icon-wrap { font-size: 1.55rem; margin-bottom: 3px; }
-        .plan-comparison-card > h3 { margin: 2px 0 4px; font-size: 1.12rem; }
-        .plan-comparison-card > p { margin-bottom: 11px; font-size: .78rem; }
-        .plan-card { min-height: 250px; padding: 14px 14px 12px; }
-        .plan-card .modal-feature-list { margin: 6px 0 8px; font-size: .72rem; line-height: 1.4; }
-        .plan-matrix { margin-top: 10px; padding: 9px 12px; }
-        .plan-matrix > div { padding: 4px 0; }
-        .plan-comparison-card > .modal-callout { margin: 9px 0 7px; padding: 7px 10px; }
-    }
-    @media (max-width: 680px) {
-        .sponsor-modal-backdrop { display: block; padding: 20px 14px; overflow-x: hidden; overflow-y: auto; }
-        .sponsor-modal-card, .sponsor-modal-card.plan-comparison-card { width: 100%; max-height: none; margin: 0 auto; overflow: visible; }
-        .plan-comparison-card { padding: 28px 16px 22px; }
-        .plan-cards { grid-template-columns: 1fr; }
-        .plan-card { min-height: auto; }
-        .plan-card-action { margin-top: 18px; }
-    }
-
-    /* ================= 5. ZERO-COURSE ONBOARDING HERO ================= */
-    .prologue-stage {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 16px 60px;
-    }
-
-    .prologue-card {
-        display: grid;
-        grid-template-columns: 340px minmax(0, 1fr);
-        align-items: center;
-        max-width: 980px;
-        width: 100%;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        padding: 36px 40px;
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
-        gap: 36px;
-    }
-
-    .prologue-visual {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-    }
-
-    .prologue-mascot-img {
-        max-height: 410px;
-        width: auto;
-        max-width: 100%;
-        object-fit: contain;
-        display: block;
-        filter: 
-            drop-shadow(0 0 8px rgba(0, 194, 168, 0.55))
-            drop-shadow(0 0 20px rgba(0, 194, 168, 0.32))
-            drop-shadow(0 0 42px rgba(108, 92, 231, 0.28))
-            drop-shadow(0 14px 28px rgba(0, 0, 0, 0.5));
-        transition: filter 0.3s ease;
-    }
-
-    .prologue-content {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        min-width: 0;
-    }
-
-    .prologue-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        width: fit-content;
-        padding: 4px 10px;
-        border-radius: 999px;
-        background: rgba(0, 194, 168, 0.12);
-        color: var(--accent);
-        font-size: 0.74rem;
-        font-weight: 800;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-    }
-
-    .prologue-heading { margin: 0; font-size: clamp(1.5rem, 2vw, 1.95rem); font-weight: 900; color: var(--ink); line-height: 1.25; }
-    .hero-highlight { color: var(--accent); }
-    .prologue-subtext { margin: 0; color: var(--muted); font-size: 0.94rem; line-height: 1.55; }
-    .prologue-path { display: flex; flex-direction: column; gap: 10px; margin: 4px 0; }
-    .path-step { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); }
-    .path-node { width: 30px; height: 30px; border-radius: 8px; background: rgba(108, 92, 231, 0.12); color: var(--primary); font-weight: 800; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .path-info { flex: 1; min-width: 0; }
-    .path-headline { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
-    .path-headline strong { font-size: 0.92rem; color: var(--ink); }
-    .path-info small { display: block; font-size: 0.8rem; color: var(--muted); line-height: 1.35; }
-    .bounty-pill { font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px; background: rgba(255, 184, 0, 0.12); color: var(--gold); }
-    .prologue-cta-wrap { margin-top: 6px; }
-    .prologue-cta { display: inline-flex; align-items: center; justify-content: center; padding: 12px 24px; font-size: 0.96rem; }
-
-    /* ================= 6. RESPONSIVE BREAKPOINTS ================= */
-    @media (prefers-reduced-motion: reduce) {
-        .sponsor-video { display: none; }
-        .sponsor-media-frame {
-            background-image: url('{% static "courses/images/ads/studyfuel_poster.webp" %}');
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-        }
-    }
-
+    /* ================= 4. TABLET COLLAPSE (<= 1280px) ================= */
     @media (max-width: 1280px) {
-        .dashboard-page-shell {
-            grid-template-columns: 1fr; /* Removes the side rail on smaller screens */
+        .dashboard-page .dashboard-page-shell {
+            grid-template-columns: 1fr;
+            padding-inline: 20px;
         }
-        .dashboard-ad-rail {
-            display: none;
+
+        .dashboard-page .dashboard-ad-rail {
+            display: none !important;
+        }
+
+        .mobile-sponsor-strip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin: 4px 0 8px;
+        }
+
+        .sponsor-strip-text {
+            flex: 1;
+            min-width: 0;
+            font-size: 0.76rem;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sponsor-strip-text strong { color: var(--ink); }
+
+        .mobile-sponsor-strip .btn {
+            padding: 2px 8px;
+            min-height: 32px;
+            font-size: 0.74rem;
+            flex-shrink: 0;
         }
     }
 
     @media (max-width: 860px) {
-        .prologue-card {
+        .dashboard-page .dashboard-grid {
             grid-template-columns: 1fr;
-            padding: 28px 24px;
-            gap: 24px;
-        }
-        .prologue-mascot-img {
-            max-height: 280px;
         }
     }
 
-    /* Mobile Polish (Phase M3: Screen widths <= 480px) */
-    @media (max-width: 480px) {
-        .page { padding: 16px 14px 20px !important; }
-        .dashboard-page-shell {
-            padding: 12px 0 32px !important;
+    /* ================= 5. STRICT PORTRAIT RESET (<= 640px) ================= */
+    @media (orientation: portrait) and (max-width: 640px) {
+        .page {
+            padding: 16px 14px 24px !important;
+        }
+
+        .dashboard-page .dashboard-page-shell {
+            padding: 8px 0 32px !important;
             gap: 16px !important;
         }
-        .hero-banner-main {
+
+        .dashboard-page .hero-banner-main {
             flex-direction: column;
             align-items: flex-start;
             gap: 10px;
         }
-        .hero-greeting { font-size: 1.3rem; }
-        .resume-body {
-            flex-direction: column;
+
+        .dashboard-page .hero-greeting {
+            font-size: 1.3rem;
+        }
+
+        .dashboard-page .resume-body {
+            display: flex !important;
+            flex-direction: column !important;
             align-items: stretch !important;
-            gap: 12px;
+            gap: 12px !important;
         }
-        .resume-body .btn {
-            width: 100%;
-            text-align: center;
+
+        .dashboard-page .resume-body > :first-child {
+            width: 100% !important;
+            min-width: 0 !important;
         }
-        .section-header {
+
+        .dashboard-page .resume-body .btn {
+            position: static !important;
+            width: 100% !important;
+            max-width: none !important;
+            height: auto !important;
+            min-height: 48px !important;
+            margin: 0 !important;
+            padding: 12px 16px !important;
+            align-self: auto !important;
+            transform: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+            white-space: normal !important;
+        }
+
+        .dashboard-page .section-header {
             flex-direction: column;
             align-items: flex-start;
             gap: 6px;
         }
-        .quest-item,
-        .badge-item { min-height: 48px; }
-        .quest-checkbox {
-            min-width: 26px;
-            min-height: 26px;
+    }
+
+    /* ================= 6. SCOPED MOBILE LANDSCAPE (Phones Only) ================= */
+    @media (orientation: landscape) and (max-height: 500px) and (max-width: 950px) {
+        .page {
+            padding: 8px 16px 20px !important;
         }
-        .prologue-card { padding: 20px 16px; }
-        .prologue-heading { font-size: 1.35rem; }
-        .prologue-cta { width: 100%; }
+
+        .dashboard-page .dashboard-page-shell {
+            padding: 6px 0 20px !important;
+            gap: 10px !important;
+        }
+
+        .dashboard-page .dashboard-hub {
+            gap: 10px !important;
+        }
+
+        .dashboard-page .hero-banner {
+            padding: 10px 14px !important;
+        }
+
+        .dashboard-page .hero-greeting {
+            font-size: 1.12rem !important;
+        }
+
+        .dashboard-page .hero-progress-section {
+            margin-top: 6px !important;
+        }
+
+        .dashboard-page .resume-card {
+            padding: 12px 14px !important;
+        }
+
+        .dashboard-page .resume-body {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
+            gap: 16px !important;
+        }
+
+        .dashboard-page .resume-body > :first-child {
+            min-width: 0 !important;
+            flex: 1 !important;
+        }
+
+        .dashboard-page .resume-body .btn {
+            width: auto !important;
+            min-width: 140px !important;
+            max-width: 190px !important;
+            height: auto !important;
+            min-height: 44px !important;
+            padding: 8px 14px !important;
+            white-space: normal !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+            justify-self: end !important;
+        }
+
+        .resume-label-full { display: none !important; }
+        .resume-label-short { display: inline !important; }
+    }
+
+    /* ================= 7. SPONSOR MODAL & BACKDROP SUPPRESSION ================= */
+    .sponsor-modal-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        background: rgba(5, 10, 22, 0.88);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        box-sizing: border-box;
+    }
+
+    .sponsor-modal-backdrop.is-open:not([hidden]) {
+        display: flex !important;
+    }
+
+    /* Force elimination of backdrop lingering */
+    .sponsor-modal-backdrop[hidden],
+    #demo-sponsor-modal[hidden],
+    #plus-preview-modal[hidden] {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    .sponsor-modal-card {
+        position: relative;
+        width: min(100%, 460px);
+        max-height: calc(100dvh - 36px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 28px 24px 24px;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+        color: var(--ink);
+    }
+
+    .sponsor-modal-close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 44px;
+        height: 44px;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        background: var(--bg);
+        color: var(--muted);
+        font-size: 1.4rem;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        transition: all 0.15s ease;
+    }
+
+    .sponsor-modal-close:hover {
+        border-color: var(--danger);
+        color: var(--danger);
+    }
+
+    .sponsor-modal-card h2 {
+        margin: 4px 44px 6px 0;
+        font-size: 1.35rem;
+        font-weight: 800;
+    }
+
+    .sponsor-modal-sub {
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.45;
+        margin: 0 0 16px;
+    }
+
+    .sponsor-media-wrap {
+        width: 100%;
+        height: 180px;
+        background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(0, 194, 168, 0.15));
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+    }
+
+    .sponsor-modal-img {
+        max-height: 100%;
+        width: auto;
+        object-fit: contain;
+    }
+
+    .sponsor-modal-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .sponsor-modal-actions .btn {
+        width: 100%;
+        min-height: 48px;
+    }
+
+    @media (max-width: 640px) {
+        .sponsor-modal-backdrop.is-open:not([hidden]) {
+            align-items: flex-end !important;
+            padding: 12px !important;
+        }
+
+        .sponsor-modal-card {
+            width: 100% !important;
+            max-height: 88dvh !important;
+            border-radius: 20px 20px 0 0 !important;
+            padding: 22px 16px calc(16px + env(safe-area-inset-bottom)) !important;
+        }
     }
 </style>
 
 {% if courses %}
     <!-- ================= ACTIVE DASHBOARD ================= -->
     <div class="dashboard-page-shell">
-        <!-- 1. MAIN PRODUCTIVITY HUB (Intact Center Unit) -->
         <div class="dashboard-hub">
             <div class="card hero-banner">
                 <div class="hero-banner-main">
@@ -492,7 +543,8 @@
                                     <p class="subtitle">{{ recent_course.description|default:"AI-generated learning path based on your uploaded materials."|truncatechars:80 }}</p>
                                 </div>
                                 <a href="{% url 'courses:course_detail' recent_course.pk %}" class="btn btn-primary btn-chunky">
-                                    Open Learning Path &rarr;
+                                    <span class="resume-label-full">Open Learning Path &rarr;</span>
+                                    <span class="resume-label-short">Open Course &rarr;</span>
                                 </a>
                             </div>
                         </div>
@@ -518,9 +570,17 @@
                         {% endfor %}
                     </div>
 
+                    <!-- Compact Mobile Sponsor Strip -->
+                    {% if profile.plan == 'free' %}
+                        <div class="mobile-sponsor-strip">
+                            <span class="sponsor-pill">Ad</span>
+                            <span class="sponsor-strip-text"><strong>StudyFuel Focus</strong> — Clean study energy</span>
+                            <button type="button" class="btn btn-ghost btn-sm open-sponsor-trigger" id="open-mobile-sponsor-btn">View &rarr;</button>
+                        </div>
+                    {% endif %}
                 </div>
 
-                <!-- Internal Dashboard Sidebar (Daily Goals & Achievements ONLY) -->
+                <!-- Internal Dashboard Sidebar -->
                 <aside class="dashboard-sidebar">
                     <div class="card side-card">
                         <div class="side-card-header">
@@ -601,7 +661,7 @@
             </div>
         </div>
 
-        <!-- 2. EXTERNAL RIGHT SPONSOR RAIL (Completely outside the hub) -->
+        <!-- External Right Sponsor Rail (Desktop Only) -->
         <aside class="dashboard-ad-rail">
             {% if profile.plan == 'free' %}
                 {% include 'courses/components/mock_sponsor_card.html' %}
@@ -610,54 +670,18 @@
     </div>
 
 {% else %}
-    <!-- ================= GETTING STARTED (Zero Courses State) ================= -->
+    <!-- Zero Courses Onboarding State -->
     <div class="prologue-stage">
         <div class="prologue-card">
             <div class="prologue-visual">
                 <img src="{% static 'courses/images/mascot_welcome.png' %}" alt="StudyQuest Student Mascot" class="prologue-mascot-img">
             </div>
-
             <div class="prologue-content">
                 <div class="prologue-badge">⚡ GETTING STARTED</div>
                 <h1 class="prologue-heading">Welcome to StudyQuest, <span class="hero-highlight">{{ request.user.username }}</span>!</h1>
                 <p class="prologue-subtext">
-                    Transform your syllabus, module slides, and lecture notes into a structured study path with targeted review widgets and adaptive quizzes.
+                    Transform your syllabus, module slides, and lecture notes into a structured study path.
                 </p>
-
-                <div class="prologue-path">
-                    <div class="path-step">
-                        <div class="path-node">1</div>
-                        <div class="path-info">
-                            <div class="path-headline">
-                                <strong>Create Your Course</strong>
-                                <span class="bounty-pill">+10 Starter XP</span>
-                            </div>
-                            <small>Name your subject and select your study mode</small>
-                        </div>
-                    </div>
-
-                    <div class="path-step">
-                        <div class="path-node">2</div>
-                        <div class="path-info">
-                            <div class="path-headline">
-                                <strong>Upload Study Materials</strong>
-                            </div>
-                            <small>Gemini extracts key terms, analogies, and comparison tables</small>
-                        </div>
-                    </div>
-
-                    <div class="path-step">
-                        <div class="path-node">3</div>
-                        <div class="path-info">
-                            <div class="path-headline">
-                                <strong>Review Lessons & Drill Quizzes</strong>
-                                <span class="bounty-pill">+50 XP</span>
-                            </div>
-                            <small>Cram high-yield concepts, verify answers, and build your streak</small>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="prologue-cta-wrap">
                     <a href="{% url 'courses:course_create' %}" class="btn btn-primary btn-chunky prologue-cta">
                         Create Your First Course &rarr;
@@ -668,9 +692,164 @@
     </div>
 {% endif %}
 
+<!-- Root-Level Modals (Positioned outside sidebar & ad-rail) -->
+{% if profile.plan == 'free' %}
+    <!-- 1. SPONSOR DEMO MODAL (Redundant View Offer button removed) -->
+    <div id="demo-sponsor-modal" class="sponsor-modal-backdrop" hidden aria-hidden="true">
+        <div class="sponsor-modal-card" role="dialog" aria-modal="true" aria-labelledby="sponsor-modal-title">
+            <button type="button" class="sponsor-modal-close" id="close-sponsor-modal" aria-label="Close sponsor preview">&times;</button>
+            <span class="modal-eyebrow">Sponsored Partner Demo</span>
+            <h2 id="sponsor-modal-title">StudyFuel Focus</h2>
+            <p class="sponsor-modal-sub">Clean energy and hydration formulated specifically for extended study sessions.</p>
+
+            <div class="sponsor-media-wrap">
+                <img src="{% static 'courses/images/ads/study_fuel_poster.png' %}" alt="StudyFuel Focus" class="sponsor-modal-poster">
+            </div>
+
+            <!-- Single action promotes ad-free upgrade without recursive loops -->
+            <div class="sponsor-modal-actions">
+                <button type="button" class="btn btn-primary btn-chunky js-open-plan-modal" id="sponsor-go-ad-free-btn">
+                    Go Ad-Free with StudyQuest Plus &rarr;
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. ROOT-LEVEL PLAN COMPARISON MODAL -->
+    <div id="plus-preview-modal" class="sponsor-modal-backdrop" hidden aria-hidden="true">
+        <div class="sponsor-modal-card plan-comparison-card" role="dialog" aria-modal="true" aria-labelledby="plan-comparison-title">
+            <button type="button" class="sponsor-modal-close" id="close-plus-modal-btn" aria-label="Close plan comparison">&times;</button>
+            
+            <span class="modal-eyebrow">StudyQuest Plans</span>
+            <h3 id="plan-comparison-title">Choose the plan for your workload</h3>
+            <p>Core learning tools remain available on both plans.</p>
+
+            <div class="plan-cards">
+                <section class="plan-card">
+                    <span class="modal-eyebrow">Current Plan</span>
+                    <h4>StudyQuest Free</h4>
+                    <p>For focused, occasional study.</p>
+                    <ul class="modal-feature-list">
+                        <li>1 AI generation per week</li>
+                        <li>Up to 5 active courses</li>
+                        <li>1 stored completion bonus</li>
+                        <li>Mixed assessments included</li>
+                        <li>Limited sponsorships</li>
+                    </ul>
+                    <div class="plan-card-action">
+                        <button type="button" class="btn btn-secondary plan-card-btn" disabled>Current Plan</button>
+                    </div>
+                </section>
+
+                <section class="plan-card plan-card-plus">
+                    <span class="modal-eyebrow">Proposed Student Plan</span>
+                    <h4>StudyQuest Plus</h4>
+                    <p>For learners managing multiple subjects.</p>
+                    <ul class="modal-feature-list">
+                        <li>3 AI generations per week</li>
+                        <li>Up to 15 active courses</li>
+                        <li>2 stored completion bonuses</li>
+                        <li>Larger study-material uploads</li>
+                        <li>Expanded mastery insights</li>
+                        <li>Completely ad-free</li>
+                    </ul>
+                    <div class="plan-card-action">
+                        <button type="button" class="btn btn-primary btn-chunky plan-card-btn" disabled>Preview Plus</button>
+                    </div>
+                </section>
+            </div>
+
+            <div class="plan-matrix">
+                <strong>Detailed comparison</strong>
+                <div><span>Weekly generations</span><b>1 / 3</b></div>
+                <div><span>Active courses</span><b>5 / 15</b></div>
+                <div><span>Ads</span><b>Limited / None</b></div>
+                <div><span>Assessment formats</span><b>Included / Included</b></div>
+            </div>
+
+            <p class="modal-callout">StudyQuest Plus is a proposed plan for demonstration. No billing or payment functionality is connected.</p>
+        </div>
+    </div>
+{% endif %}
+
 <script>
-    document.querySelectorAll('[data-progress]').forEach(el => {
-        el.style.width = el.getAttribute('data-progress') + '%';
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Progress Bar Fills
+        document.querySelectorAll('[data-progress]').forEach(el => {
+            el.style.width = el.getAttribute('data-progress') + '%';
+        });
+
+        // 2. Remove duplicate modals from sidebar rail if present
+        document.querySelectorAll('.dashboard-ad-rail #demo-sponsor-modal, .dashboard-ad-rail #plus-preview-modal').forEach(el => el.remove());
+
+        const sponsorModal = document.getElementById('demo-sponsor-modal');
+        const planModal = document.getElementById('plus-preview-modal');
+
+        function setModalState(modal, isOpen) {
+            if (!modal) return;
+            modal.hidden = !isOpen;
+            modal.setAttribute('aria-hidden', String(!isOpen));
+            modal.classList.toggle('is-open', isOpen);
+            if (isOpen) {
+                modal.removeAttribute('hidden');
+            } else {
+                modal.setAttribute('hidden', '');
+            }
+
+            const anyOpen = document.querySelectorAll('.sponsor-modal-backdrop.is-open:not([hidden])').length > 0;
+            document.documentElement.classList.toggle('modal-open', anyOpen);
+            document.body.classList.toggle('modal-open', anyOpen);
+        }
+
+        // 3. Open Sponsor Modal (Triggered by desktop ad rail button or mobile strip)
+        document.querySelectorAll('.open-sponsor-trigger, .sponsor-cta').forEach(btn => {
+            btn.removeAttribute('onclick');
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setModalState(planModal, false);
+                setModalState(sponsorModal, true);
+            });
+        });
+
+        // 4. Open Plan Modal (Desktop "Go Ad-Free" link + Modal button)
+        document.querySelectorAll('.sponsor-upgrade-link, .js-open-plan-modal, #topbar-compare-plans').forEach(btn => {
+            btn.removeAttribute('onclick');
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setModalState(sponsorModal, false);
+                requestAnimationFrame(() => {
+                    setModalState(planModal, true);
+                });
+            });
+        });
+
+        // 5. Close buttons
+        document.querySelectorAll('#close-sponsor-modal, #close-plus-modal-btn, .sponsor-modal-close').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setModalState(sponsorModal, false);
+                setModalState(planModal, false);
+            });
+        });
+
+        // 6. Backdrop dismiss
+        [sponsorModal, planModal].forEach(modal => {
+            if (!modal) return;
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) setModalState(modal, false);
+            });
+        });
+
+        // 7. ESC dismiss
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                setModalState(sponsorModal, false);
+                setModalState(planModal, false);
+            }
+        });
     });
 </script>
 {% endblock %}
