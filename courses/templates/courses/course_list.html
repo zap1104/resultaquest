@@ -30,7 +30,78 @@
     .course-progress-fill { height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--primary),var(--accent)); }
     .library-course-actions { display:grid; grid-template-columns:1fr auto; gap:8px; margin-top:16px; }
     @media (max-width:1000px) { .course-library-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-    @media (max-width:620px) { .course-library-header,.library-capacity-strip { align-items:stretch; flex-direction:column; } .course-library-grid { grid-template-columns:1fr; } }
+    @media (max-width:640px) {
+        .course-library-page {
+            padding: 16px 14px 32px !important;
+        }
+
+        .course-library-header {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .course-library-header .btn {
+            width: 100%;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .library-capacity-strip {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 10px;
+            padding: 14px 16px !important;
+        }
+
+        .library-capacity-strip > div {
+            width: 100%;
+        }
+
+        .course-library-tabs {
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 4px;
+        }
+
+        .course-library-tabs .btn {
+            min-height: 44px;
+            padding: 10px 16px;
+        }
+
+        .course-library-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .library-course-card {
+            padding: 16px;
+        }
+
+        .library-course-top {
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .library-course-actions {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .library-course-actions form {
+            margin: 0;
+        }
+
+        .library-course-actions .btn {
+            width: 100%;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+    }
 </style>
 <div class="course-library-page">
 <div class="course-library-header">
@@ -48,7 +119,7 @@
 
 <div class="library-capacity-strip">
     <div><strong>{{ profile.plan|title }} plan · Active courses {{ active_count }} / {{ active_limit }}</strong><span>Archived courses do not consume active slots. Bonus credits: {{ user.userprofile.bonus_course_credits }} / {{ eligibility.bonus_limit }}</span></div>
-    <a class="btn btn-ghost btn-sm" href="{% url 'courses:course_create' %}">Create course</a>
+    <button type="button" class="btn btn-secondary btn-sm" id="library-compare-plans">Compare Plans</button>
 </div>
 
 {% if active_tab == 'active' and active_courses %}
@@ -77,4 +148,5 @@
     </div>
 {% endif %}
 </div>
+{% include 'courses/components/plan_comparison_modal.html' %}
 {% endblock %}

@@ -417,6 +417,44 @@
             max-height: 280px;
         }
     }
+
+    /* Mobile Polish (Phase M3: Screen widths <= 480px) */
+    @media (max-width: 480px) {
+        .page { padding: 16px 14px 20px !important; }
+        .dashboard-page-shell {
+            padding: 12px 0 32px !important;
+            gap: 16px !important;
+        }
+        .hero-banner-main {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .hero-greeting { font-size: 1.3rem; }
+        .resume-body {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 12px;
+        }
+        .resume-body .btn {
+            width: 100%;
+            text-align: center;
+        }
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+        .quest-item,
+        .badge-item { min-height: 48px; }
+        .quest-checkbox {
+            min-width: 26px;
+            min-height: 26px;
+        }
+        .prologue-card { padding: 20px 16px; }
+        .prologue-heading { font-size: 1.35rem; }
+        .prologue-cta { width: 100%; }
+    }
 </style>
 
 {% if courses %}

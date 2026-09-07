@@ -6,9 +6,12 @@
 {% block content %}
 <style>
     /* 1. VIEWPORT & WORKSPACE LOCK */
-    html, body { width: 100%; height: 100%; overflow: hidden !important; margin: 0; }
+    @media (min-width: 1051px) {
+        html, body { width: 100%; height: 100%; overflow: hidden !important; margin: 0; }
+        .page { height: calc(100vh - var(--topbar-height)); overflow: hidden !important; }
+    }
     .footer, footer, .site-footer { display: none !important; }
-    .page { width: 100% !important; max-width: none !important; height: calc(100vh - 61px); margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
+    .page { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
 
     /* 2. MASTER WORKSPACE */
     .review-workspace {
@@ -94,6 +97,7 @@
         opacity: 0; visibility: hidden; pointer-events: none; transform: translateX(16px);
         transition: width 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease, transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), border-width 0s linear 0.12s, visibility 0s linear 0.42s;
     }
+    body.chapter-reader-open { overflow: hidden !important; overscroll-behavior: none; }
     .reader-open .lesson-reader-pane {
         width: calc((100% - 28px) / 2); border-width: 1px; opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(0);
         transition: width 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease 0.08s, transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), border-width 0s, visibility 0s;
@@ -156,8 +160,115 @@
     .confusion-diff { margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
 
     @media (max-width: 1050px) {
-        .review-workspace.reader-open .lesson-hub-pane { display: none; }
-        .review-workspace.reader-open .lesson-reader-pane { width: min(100%, 760px); }
+        .review-workspace { padding: 20px 16px; }
+        .review-workspace.reader-open .lesson-hub-pane { display: none !important; }
+        .review-workspace.reader-open .lesson-reader-pane {
+            position: fixed;
+            inset: 0;
+            width: 100% !important;
+            height: 100dvh !important;
+            max-width: none;
+            border: none;
+            border-radius: 0;
+            z-index: 1300;
+            transform: none;
+        }
+        .reader-header { padding: 16px 20px; }
+        .reader-close { width: 44px; height: 44px; font-size: 1.35rem; }
+        .reader-content { padding: 24px 20px 48px; }
+    }
+
+    @media (max-width: 640px) {
+        .review-workspace { padding: 14px 12px 24px; align-items: flex-start; overflow-y: auto; }
+        .lesson-hub-pane { height: auto; overflow: visible; }
+        .lesson-hub { gap: 16px; }
+        .lesson-heading { grid-template-columns: auto minmax(0, 1fr); gap: 12px; }
+        .lesson-completed-chip { grid-column: 1 / -1; justify-self: flex-start; }
+        .lesson-preview-card { padding: 18px 16px; }
+        .lesson-actions .btn { min-height: 48px; }
+        .lesson-activities { grid-template-columns: 1fr; gap: 10px; }
+        .lesson-activity { min-height: 64px; padding: 12px 14px; }
+        .comparison-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-inline: contain; margin-bottom: 12px; }
+        .cram-comparison-table th, .cram-comparison-table td { white-space: nowrap; padding: 10px 12px; }
+
+        html, body {
+            height: auto !important;
+            min-height: 100%;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+        }
+
+        body.chapter-reader-open {
+            height: 100% !important;
+            overflow: hidden !important;
+        }
+
+        .page {
+            width: 100% !important;
+            height: auto !important;
+            min-height: calc(100dvh - var(--topbar-height));
+            overflow: visible !important;
+        }
+
+        .review-workspace {
+            width: 100%;
+            display: block;
+            height: auto !important;
+            min-height: calc(100dvh - var(--topbar-height));
+            padding: 14px 12px 96px !important;
+            align-items: flex-start;
+            overflow: visible !important;
+        }
+
+        .lesson-hub-pane {
+            width: 100% !important;
+            height: auto !important;
+            align-items: flex-start;
+            overflow: visible !important;
+        }
+
+        .lesson-hub { width: 100%; max-width: none; }
+        .theme-toggle-fab { right: 16px; bottom: calc(78px + env(safe-area-inset-bottom)); }
+    }
+
+    @media (max-width: 1050px) {
+        html, body {
+            height: auto !important;
+            min-height: 100% !important;
+            overflow-x: clip !important;
+            overflow-y: auto !important;
+        }
+        body.chapter-reader-open {
+            height: 100dvh !important;
+            overflow: hidden !important;
+            overscroll-behavior: none;
+        }
+        .page {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+        }
+        .review-workspace {
+            width: 100%;
+            height: auto !important;
+            min-height: 0 !important;
+            padding: 16px 14px 40px !important;
+            align-items: flex-start;
+            overflow: visible !important;
+        }
+        .lesson-hub-pane {
+            width: 100% !important;
+            display: block;
+            height: auto !important;
+            min-height: 0 !important;
+            flex: none !important;
+            overflow: visible !important;
+        }
+        .lesson-hub { width: 100%; max-width: none; }
+        .lesson-reader-pane { display: none; }
+        .review-workspace.reader-open .lesson-reader-pane { display: flex; }
+        .theme-toggle-fab { right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); }
     }
 </style>
 
@@ -194,7 +305,7 @@
             <article class="lesson-preview-card">
                 <span class="lesson-preview-label">Quick Review</span>
                 <div class="lesson-preview">
-                    <p>{{ chapter.source_data.overview|default:chapter.review_content }}</p>
+                    <p>{{ chapter_overview }}</p>
                     <div class="lesson-preview-fade" aria-hidden="true"></div>
                 </div>
                 <div class="lesson-actions">
@@ -267,13 +378,12 @@
 
         <div class="reader-content" id="reader-content" tabindex="0">
             <article class="reader-content-inner">
-                {% if chapter.source_data.sections %}
-                    <!-- Header & Focus -->
-                    <div class="cram-overview-card">
-                        <span class="cram-badge">{{ chapter.source_data.week_label|default:"Chapter Focus" }}</span>
-                        <p class="cram-lead">{{ chapter.source_data.focus|default:chapter.source_data.overview }}</p>
-                    </div>
+                <div class="cram-overview-card">
+                    <span class="cram-badge">{{ chapter_data.week_label|default:"Chapter Focus" }}</span>
+                    <p class="cram-lead">{{ chapter_overview }}</p>
+                </div>
 
+                {% if chapter_data.sections %}
                     <!-- Learning Objectives -->
                     {% if chapter.source_data.learning_objectives %}
                         <div class="cram-section">
@@ -405,7 +515,55 @@
                         </div>
                     {% endif %}
                 {% else %}
-                    <p>{{ chapter.review_content|linebreaks }}</p>
+                    {% if chapter_data.key_terms %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Key Terms</h3>
+                            {% for term in chapter_data.key_terms %}
+                                <div class="concept-card">
+                                    <div class="concept-term">{{ term.term }}</div>
+                                    <p class="concept-formal">{{ term.definition }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% if chapter_data.quick_facts %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Quick Facts</h3>
+                            <ul class="cram-facts-list">
+                                {% for fact in chapter_data.quick_facts %}<li>{{ fact }}</li>{% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    {% if chapter_data.timeline %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Timeline</h3>
+                            <ul class="cram-facts-list">
+                                {% for item in chapter_data.timeline %}<li>{{ item }}</li>{% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    {% if chapter_data.real_world_examples %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Real-World Examples</h3>
+                            <ul class="cram-facts-list">
+                                {% for example in chapter_data.real_world_examples %}<li>{{ example }}</li>{% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    {% if chapter_data.analogy %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Analogy</h3>
+                            <p class="section-intro">{{ chapter_data.analogy.explanation|default:chapter_data.analogy }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if not chapter_data.key_terms and not chapter_data.quick_facts and not chapter_data.timeline and not chapter_data.real_world_examples and not chapter_data.analogy %}
+                        <p>{{ chapter_overview|linebreaks }}</p>
+                    {% endif %}
                 {% endif %}
             </article>
         </div>
@@ -448,19 +606,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return response.json();
     }
 
+    let readingSyncPending = false;
+
     async function checkReadingProgress() {
-        if (hasReadToEnd || !readerContent || !completeBtn) return;
+        if (hasReadToEnd || readingSyncPending || !readerContent || !completeBtn) return;
 
         const distanceFromBottom = readerContent.scrollHeight - readerContent.scrollTop - readerContent.clientHeight;
-        if (distanceFromBottom <= 40) {
-            try {
-                await recordReadingCompletion();
-                hasReadToEnd = true;
-                completeBtn.disabled = false;
-                completeBtn.textContent = 'Mark Lesson Complete (+15 XP)';
-            } catch (err) {
-                console.error('Failed to sync reading status:', err);
-            }
+        if (distanceFromBottom > 80) return;
+
+        readingSyncPending = true;
+        try {
+            await recordReadingCompletion();
+            hasReadToEnd = true;
+            completeBtn.disabled = false;
+            completeBtn.textContent = 'Mark Lesson Complete (+15 XP)';
+        } catch (err) {
+            console.error('Failed to sync reading status:', err);
+        } finally {
+            readingSyncPending = false;
         }
     }
 
@@ -472,6 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
         workspace.classList.add('reader-open');
         reader.setAttribute('aria-hidden', 'false');
         openReaderBtn.setAttribute('aria-expanded', 'true');
+        document.body.classList.add('chapter-reader-open');
         window.requestAnimationFrame(() => {
             closeReaderBtn.focus();
             checkReadingProgress();
@@ -482,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
         workspace.classList.remove('reader-open');
         reader.setAttribute('aria-hidden', 'true');
         openReaderBtn.setAttribute('aria-expanded', 'false');
-        readerContent.scrollTop = 0;
+        document.body.classList.remove('chapter-reader-open');
         openReaderBtn.focus();
     }
 
