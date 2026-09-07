@@ -1,15 +1,22 @@
 import json
 import re
 import unicodedata
+from decimal import Decimal
 
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.db import transaction
+from django.db.models import Max
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from .credits import (
+    award_course_completion_bonus,
+    consume_generation_credit,
+    get_generation_eligibility,
+)
 from .models import (
     Chapter,
     ChapterCompletion,
@@ -20,16 +27,18 @@ from .models import (
     QuizAttempt,
     UserProfile,
 )
-from .credits import (
-    award_course_completion_bonus,
-    consume_generation_credit,
-    get_generation_eligibility,
-)
 from .schemas import GenerationPreferences
 from .services import generate_course_journey
 
 QUIZ_PASS_THRESHOLD = 75
 LESSON_COMPLETION_XP = 15
+
+REVIEW_ANCHOR_BY_TYPE = {
+    "multiple_choice": "key-terms",
+    "true_false": "overview",
+    "identification": "key-terms",
+    "enumeration": "enumerations",
+}
 
 
 # --------------------------------------------------
@@ -401,7 +410,7 @@ def _build_journey(course_or_user, journey_data=None, journey_override=None, cus
 
 
 # --------------------------------------------------
-# 4. COURSE DETAIL & CHAPTER REVIEW (WITH LOCK GATES)
+# 4. COURSE DETAIL & CHAPTER REVIEW
 # --------------------------------------------------
 @login_required
 def course_detail(request, pk):
@@ -415,7 +424,6 @@ def course_detail(request, pk):
         chapter.quiz_passed = completion_state["quiz_passed"]
         chapter.tested_out = completion_state["tested_out"]
         chapter.best_quiz_percentage = completion_state["best_quiz_percentage"]
-        chapter.has_quiz = completion_state["has_quiz"]
         chapter.previous_chapter = get_previous_chapter(chapter)
 
     progress = calculate_course_progress(request.user, course)
@@ -449,8 +457,6 @@ def chapter_review(request, pk):
             "previous_state": previous_state,
             "course": course,
             "pass_threshold": QUIZ_PASS_THRESHOLD,
-            "regular_pass_threshold": QUIZ_PASS_THRESHOLD,
-            "test_out_threshold": QUIZ_PASS_THRESHOLD,
         }, status=403)
 
     progress = calculate_course_progress(request.user, course)
@@ -465,12 +471,20 @@ def chapter_review(request, pk):
         or "No chapter review content is available."
     )
 
+    # Read the latest quiz attempt to display on the activity card
+    latest_attempt = (
+        QuizAttempt.objects.filter(user=request.user, quiz=quiz)
+        .order_by("-completed_at")
+        .first()
+    ) if quiz else None
+
     return render(request, "courses/chapter_review.html", {
         "chapter": chapter,
         "chapter_data": chapter_data,
         "chapter_overview": chapter_overview,
         "has_quiz": quiz is not None,
         "question_count": question_count,
+        "latest_attempt": latest_attempt,
         "is_completed": completion_state["lesson_completed"],
         "chapter_fully_completed": completion_state["completed"],
         "quiz_passed": completion_state["quiz_passed"],
@@ -608,7 +622,17 @@ def chapter_quiz(request, pk):
         }, status=403)
 
     quiz = getattr(chapter, "quiz", None)
-    return render(request, "courses/chapter_quiz.html", {"chapter": chapter, "quiz": quiz})
+    latest_attempt = (
+        QuizAttempt.objects.filter(user=request.user, quiz=quiz)
+        .order_by("-completed_at")
+        .first()
+    ) if quiz else None
+
+    return render(request, "courses/chapter_quiz.html", {
+        "chapter": chapter,
+        "quiz": quiz,
+        "latest_attempt": latest_attempt,
+    })
 
 
 def _grade_question(question, submitted_answer):
@@ -750,91 +774,171 @@ def check_quiz_answer(request, pk):
 
 @login_required
 @require_POST
-def submit_quiz(request, pk):
-    chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
-    if get_chapter_status(request.user, chapter) == "locked":
-        return JsonResponse({"error": "This chapter is locked."}, status=403)
-
+def submit_quiz(request, pk=None, chapter_id=None):
+    target_id = pk or chapter_id
+    chapter = get_object_or_404(
+        Chapter.objects.select_related("course", "quiz"),
+        pk=target_id,
+        course__user=request.user,
+    )
     quiz = getattr(chapter, "quiz", None)
-    if quiz is None:
-        return JsonResponse({"error": "No quiz for this chapter."}, status=404)
+    if not quiz:
+        return JsonResponse({"error": "Quiz not found."}, status=404)
 
     try:
-        payload = json.loads(request.body)
-        submitted_answers = payload.get("answers", {})
-        if not isinstance(submitted_answers, dict):
-            submitted_answers = {}
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON."}, status=400)
+        data = json.loads(request.body)
+        user_answers = data.get("answers", {})
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({"error": "Invalid JSON payload."}, status=400)
 
-    questions = list(quiz.questions.prefetch_related("choices").all())
-    total_earned = 0
-    total_maximum = 0
-    results = []
+    questions = quiz.questions.prefetch_related("choices").all().order_by("order")
+    total_earned = Decimal("0.0")
+    total_max = Decimal("0.0")
+    review_items = []
 
-    for question in questions:
-        submitted_answer = submitted_answers.get(str(question.id))
-        earned_points, maximum_points, feedback = _grade_question(question, submitted_answer)
-        total_earned += earned_points
-        total_maximum += maximum_points
-        review_entry = {
-            "question_id": question.id,
-            "order": question.order,
-            "question_type": question.question_type,
-            "question_text": question.text,
-            "earned_points": earned_points,
-            "maximum_points": maximum_points,
-            "explanation": question.explanation,
-            "submitted_answer": submitted_answer if isinstance(submitted_answer, dict) else {},
+    for q in questions:
+        ans_payload = user_answers.get(str(q.id)) or user_answers.get(q.id) or {}
+        grading_result = _grade_question(q, ans_payload)
+
+        # Unpack tuple or dict defensively
+        if isinstance(grading_result, tuple):
+            if len(grading_result) == 3:
+                earned_val, max_val, feedback = grading_result
+            elif len(grading_result) == 4:
+                _, earned_val, max_val, feedback = grading_result
+            elif len(grading_result) == 2:
+                earned_val, feedback = grading_result
+                max_val = q.max_points or 1.0
+            else:
+                earned_val, max_val, feedback = 0, q.max_points or 1.0, {}
+        elif isinstance(grading_result, dict):
+            earned_val = grading_result.get("earned_points", 0)
+            max_val = grading_result.get("maximum_points", q.max_points or 1.0)
+            feedback = grading_result
+        else:
+            earned_val, max_val, feedback = 0, q.max_points or 1.0, {}
+
+        if not isinstance(feedback, dict):
+            feedback = {}
+
+        earned_pts = Decimal(str(earned_val or 0))
+        max_pts = Decimal(str(max_val or q.max_points or 1.0))
+        total_earned += earned_pts
+        total_max += max_pts
+
+        if earned_pts >= max_pts and max_pts > 0:
+            result_state = "correct"
+        elif earned_pts > 0:
+            result_state = "partial"
+        else:
+            result_state = "incorrect"
+
+        review_item = {
+            "question_id": q.id,
+            "question_type": q.question_type,
+            "prompt": q.text,
+            "earned_points": float(earned_pts),
+            "maximum_points": float(max_pts),
+            "result_state": result_state,
+            "explanation": q.explanation or feedback.get("explanation", ""),
             **feedback,
         }
 
-        if question.question_type in {"multiple_choice", "true_false"}:
-            chosen_id = (submitted_answer or {}).get("choice_id") if isinstance(submitted_answer, dict) else None
+        # Format 1: Multiple Choice & True/False
+        if q.question_type in {"multiple_choice", "true_false"}:
             try:
-                chosen_id = int(chosen_id)
+                sub_c_id = int(ans_payload.get("choice_id"))
             except (TypeError, ValueError):
-                chosen_id = None
-            chosen_choice = next((choice for choice in question.choices.all() if choice.id == chosen_id), None)
-            review_entry["submitted_choice_text"] = chosen_choice.text if chosen_choice else "No answer"
+                sub_c_id = None
 
-        results.append(review_entry)
+            sub_choice = next((c for c in q.choices.all() if c.id == sub_c_id), None)
+            corr_choice = next((c for c in q.choices.all() if c.is_correct), None)
 
-    percentage = round(total_earned / max(total_maximum, 1) * 100)
-    from .credits import calculate_delta_quiz_xp
-    xp_earned = calculate_delta_quiz_xp(request.user, quiz, percentage)
+            review_item.update({
+                "submitted_text": sub_choice.text if sub_choice else "No answer provided",
+                "correct_text": corr_choice.text if corr_choice else feedback.get("correct_choice_text", ""),
+                "is_correct": result_state == "correct",
+            })
 
+        # Format 2: Identification
+        elif q.question_type == "identification":
+            submitted_text = (ans_payload.get("text") or "").strip()
+            answer_data = q.answer_data or {}
+            canonical = answer_data.get("canonical_answer") or ""
+            alternatives = answer_data.get("alternative_answers") or []
+
+            review_item.update({
+                "submitted_text": submitted_text or "No answer provided",
+                "canonical_text": canonical,
+                "accepted_variants": alternatives,
+                "is_correct": result_state == "correct",
+            })
+
+        # Format 3: Enumeration
+        elif q.question_type == "enumeration":
+            raw_items = ans_payload.get("items") or []
+            submitted_items = [str(it).strip() for it in raw_items if str(it).strip()]
+            expected_items = (q.answer_data or {}).get("expected_items", [])
+            canonical_items = [
+                it.get("canonical", "") if isinstance(it, dict) else str(it)
+                for it in expected_items
+            ]
+
+            review_item.update({
+                "submitted_items": submitted_items or ["No answer provided"],
+                "canonical_items": canonical_items,
+                "matched_items": feedback.get("matched_items", []),
+                "missing_items": feedback.get("missing_items", []),
+                "order_matters": feedback.get("order_matters", False),
+            })
+
+        review_items.append(review_item)
+
+    percentage = int(round((total_earned / total_max * 100))) if total_max > 0 else 0
+    passed = percentage >= QUIZ_PASS_THRESHOLD
+
+    previous_best_xp = (
+        QuizAttempt.objects.filter(user=request.user, quiz=quiz)
+        .aggregate(Max("xp_earned"))["xp_earned__max"]
+        or 0
+    )
+
+    base_xp_potential = 50 if passed else 15
+    xp_delta = max(base_xp_potential - previous_best_xp, 0)
+
+    # Persist QuizAttempt with the complete review data snapshot
     QuizAttempt.objects.create(
         user=request.user,
         quiz=quiz,
-        score=total_earned,
-        total_questions=total_maximum,
-        xp_earned=xp_earned,
+        score=float(total_earned),
+        total_questions=int(total_max),
+        xp_earned=base_xp_potential if passed else max(previous_best_xp, base_xp_potential),
+        review_data={
+            "score": float(total_earned),
+            "maximum_score": float(total_max),
+            "percentage": percentage,
+            "passed": passed,
+            "review_items": review_items,
+        },
     )
 
-    profile, _ = UserProfile.objects.get_or_create(user=request.user)
-    profile.award_xp(xp_earned, reason=f"Quiz: {chapter.title}")
-    profile.record_study_activity()
+    profile = getattr(request.user, "userprofile", None) or getattr(request.user, "profile", None)
+    if profile and xp_delta > 0:
+        if hasattr(profile, "award_xp"):
+            profile.award_xp(xp_delta, reason=f"Quiz result: {chapter.title}")
+        elif hasattr(profile, "add_xp"):
+            profile.add_xp(xp_delta)
 
-    completion_state = get_chapter_completion_state(request.user, chapter)
-    next_chapter = get_next_chapter(chapter)
-    course_bonus = award_course_completion_bonus(request.user, chapter.course)
+    if profile and hasattr(profile, "record_study_activity"):
+        profile.record_study_activity()
 
     return JsonResponse({
-        "score": total_earned,
-        "total_questions": total_maximum,
+        "score": float(total_earned),
+        "maximum_score": float(total_max),
         "percentage": percentage,
-        "passed": (percentage >= QUIZ_PASS_THRESHOLD),
-        "tested_out": (
-            percentage >= QUIZ_PASS_THRESHOLD and not completion_state["lesson_completed"]
-        ),
-        "chapter_completed": completion_state["completed"],
-        "next_chapter_unlocked": (completion_state["completed"] and next_chapter is not None),
-        "next_chapter_id": next_chapter.pk if (completion_state["completed"] and next_chapter) else None,
-        "xp_earned": xp_earned,
-        "new_total_xp": profile.total_xp,
-        "new_level": profile.current_level,
-        "new_streak": profile.streak_days,
-        "results": results,
-        "course_bonus_awarded": course_bonus["bonus_awarded"],
+        "passed": passed,
+        "xp_earned": xp_delta,
+        "new_level": getattr(profile, "current_level", 1) if profile else 1,
+        "new_streak": getattr(profile, "streak_days", 0) if profile else 0,
+        "review_items": review_items,
     })

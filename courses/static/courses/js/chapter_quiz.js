@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Defensive textContent helper to prevent TypeError on null elements
     function setText(id, value) {
         const el = document.getElementById(id);
         if (el) el.textContent = value ?? '';
@@ -32,18 +31,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const letters = ['A', 'B', 'C', 'D'];
     let currentIndex = 0;
-    let selectedAnswers = {}; // Preserves backend schema: { choice_id } | { text } | { items }
+    let selectedAnswers = {};
     let gradedHistory = [];
     let isCurrentGraded = false;
+    let serverReviewData = null;
 
     function getCookie(name) {
         const parts = (`; ${document.cookie}`).split(`; ${name}=`);
         return parts.length === 2 ? parts.pop().split(';').shift() : '';
     }
 
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function escapeList(items) {
+        return (items || []).map(escapeHtml).join(' • ');
+    }
+
     function renderQuestion() {
         isCurrentGraded = false;
         const q = quiz.questions[currentIndex];
+        if (!q) return;
+
         const isTF = q.type === 'true_false';
         const typeLabels = {
             multiple_choice: 'Multiple Choice',
@@ -66,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (progressFill) progressFill.style.width = `${pct}%`;
         setText('quiz-progress-label', `Question ${currentIndex + 1} of ${quiz.questions.length}`);
 
-        // Generate Question Body without any extra action buttons
+        // Generate Question Body
         let bodyHtml = '';
         if (q.type === 'multiple_choice' || q.type === 'true_false') {
             const currentPick = selectedAnswers[q.id]?.choice_id;
@@ -119,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function bindInputEvents(q) {
-        // Multiple Choice / True-False
         wrap.querySelectorAll('.quiz-option').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (isCurrentGraded) return;
@@ -131,7 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Identification
         const idInput = wrap.querySelector('#id-answer-input');
         if (idInput) {
             idInput.addEventListener('input', () => {
@@ -149,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Enumeration
         const enumInputs = wrap.querySelectorAll('.enumeration-input');
         if (enumInputs.length) {
             enumInputs.forEach(input => {
@@ -196,7 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
             isCurrentGraded = true;
             gradedHistory.push({ question: q, userPick: answerPayload, result: data });
 
-            // Lock in-page options and highlight results
             if (q.type === 'multiple_choice' || q.type === 'true_false') {
                 wrap.querySelectorAll('.quiz-option').forEach(btn => {
                     btn.classList.add('locked');
@@ -215,10 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 wrap.querySelectorAll('.enumeration-input').forEach(inp => inp.disabled = true);
             }
 
-            // Hide the Check Answer button with utility class
             actionBtn.classList.add('is-hidden');
 
-            // Determine Partial vs Full Credit
             const earned = Number(data.earned_points ?? (data.is_correct ? 1 : 0));
             const maxPts = Number(data.maximum_points ?? q.max_points ?? 1);
             const feedbackState = earned === maxPts ? 'is-correct' : (earned > 0 ? 'is-partial' : 'is-incorrect');
@@ -229,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setText('sheet-title-text', feedbackState === 'is-correct' ? 'Nicely Done!' : (feedbackState === 'is-partial' ? 'Almost There' : 'Concept Review'));
             setText('sheet-expl-text', data.explanation || '');
 
-            // Extra details for identification & enumeration
             let extraHtml = '';
             if (data.canonical_answer) {
                 extraHtml += `<div>Accepted Term: <strong>${data.canonical_answer}</strong></div>`;
@@ -247,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 sheetContinue.innerHTML = isLast ? 'Complete Quiz &rarr;' : 'Next Question &rarr;';
             }
 
-            // Slide up feedback sheet
             sheet.classList.remove('is-hidden');
             sheet.classList.add('is-entering');
             requestAnimationFrame(() => {
@@ -282,7 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
         sheet.classList.toggle('is-collapsed');
     });
 
-    // Touch swipe handling for mobile bottom sheet
     let touchStartY = null;
     sheet.addEventListener('touchstart', (e) => {
         if (!e.target.closest('.feedback-sheet-handle')) return;
@@ -304,8 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
         sheet.classList.add('is-hidden');
         wrap.innerHTML = `
             <div style="text-align: center; padding: 70px 20px;">
-                <div style="font-size: 2.2rem; margin-bottom: 8px;">⚡</div>
-                <h2 style="margin: 0; font-size: 1.4rem;">Finalizing Assessment...</h2>
+                <div style="font-size: 2.2rem; margin-bottom: 12px;">📝</div>
+                <h2 style="margin: 0; font-size: 1.35rem; color: var(--ink);">Evaluating Learning Path...</h2>
+                <p style="margin: 6px 0 0; color: var(--muted); font-size: 0.9rem;">Compiling answer review and topic anchors.</p>
             </div>
         `;
 
@@ -320,55 +327,303 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ answers: selectedAnswers })
             });
 
+            if (!res.ok) throw new Error('Evaluation submission failed');
             const data = await res.json();
-            setText('sheet-score', `${data.score}/${data.total_questions}`);
-            setText('sheet-percentage', `${data.percentage}%`);
-            setText('sheet-xp', `+${data.xp_earned}`);
-            setText('sheet-level', data.new_level);
-            setText('sheet-streak', data.new_streak);
+            serverReviewData = data;
 
-            if (resultSheet) resultSheet.classList.add('open');
+            setText('sheet-score', `${data.score} / ${data.maximum_score}`);
+            setText('sheet-percentage', `${data.percentage}%`);
+            setText('sheet-xp', `+${data.xp_earned} XP`);
+
+            const passBadge = document.getElementById('result-pass-badge');
+            if (passBadge) {
+                passBadge.textContent = data.passed ? 'Assessment Passed' : 'Review Suggested';
+                passBadge.className = `result-badge ${data.passed ? 'passed' : 'retry'}`;
+            }
+
+            if (resultSheet) {
+                resultSheet.classList.add('open');
+                resultSheet.scrollIntoView({ behavior: 'smooth' });
+            }
         } catch (err) {
             console.error('Finalize error:', err);
+            wrap.innerHTML = `
+                <div style="text-align: center; padding: 50px 20px;">
+                    <p style="color: var(--danger);">Failed to save assessment results.</p>
+                    <button type="button" class="btn btn-secondary" onclick="location.reload()">Retry</button>
+                </div>
+            `;
         }
     }
 
-    document.getElementById('open-review-btn')?.addEventListener('click', () => {
-        buildReviewModal();
-        if (reviewModal) reviewModal.classList.add('is-active');
-    });
-
-    document.getElementById('close-review-btn')?.addEventListener('click', () => {
-        if (reviewModal) reviewModal.classList.remove('is-active');
-    });
-
-    document.getElementById('back-to-results-btn')?.addEventListener('click', () => {
-        if (reviewModal) reviewModal.classList.remove('is-active');
-    });
-
     function buildReviewModal() {
-        if (!reviewContainer) return;
-        reviewContainer.innerHTML = gradedHistory.map((item, idx) => {
-            const earned = Number(item.result.earned_points ?? (item.result.is_correct ? 1 : 0));
-            const maxPts = Number(item.result.maximum_points ?? item.question.max_points ?? 1);
-            const state = earned === maxPts ? 'is-correct' : (earned > 0 ? 'is-partial' : 'is-incorrect');
+        if (!reviewContainer || !serverReviewData || !serverReviewData.review_items) return;
+        const reviewUrlBase = document.getElementById('quiz-exit-link')?.getAttribute('href') || '';
+
+        reviewContainer.innerHTML = serverReviewData.review_items.map((item, idx) => {
+            const statusClass = ['correct', 'partial', 'incorrect'].includes(item.result_state) 
+                ? item.result_state 
+                : 'incorrect';
+            
+            const statusLabel = statusClass === 'correct' 
+                ? 'Correct' 
+                : (statusClass === 'partial' ? 'Partially Correct' : 'Needs Review');
+
+            let detailHtml = '';
+
+            if (item.question_type === 'multiple_choice' || item.question_type === 'true_false') {
+                detailHtml = `
+                    <div class="review-data-row">
+                        <span>Submitted answer:</span>
+                        <strong class="${item.is_correct ? 'text-accent' : 'text-danger'}">${escapeHtml(item.submitted_text || 'No answer provided')}</strong>
+                    </div>
+                    ${!item.is_correct ? `
+                        <div class="review-data-row">
+                            <span>Correct answer:</span>
+                            <strong class="text-accent">${escapeHtml(item.correct_text)}</strong>
+                        </div>
+                    ` : ''}
+                `;
+            } else if (item.question_type === 'identification') {
+                detailHtml = `
+                    <div class="review-data-row">
+                        <span>Submitted response:</span>
+                        <strong class="${item.is_correct ? 'text-accent' : 'text-danger'}">${escapeHtml(item.submitted_text || 'No answer provided')}</strong>
+                    </div>
+                    ${!item.is_correct ? `
+                        <div class="review-data-row">
+                            <span>Accepted term:</span>
+                            <strong class="text-accent">${escapeHtml(item.canonical_text)}</strong>
+                        </div>
+                        ${item.accepted_variants && item.accepted_variants.length ? `
+                            <div class="review-data-row">
+                                <span>Accepted variants:</span>
+                                <span>${escapeList(item.accepted_variants)}</span>
+                            </div>
+                        ` : ''}
+                    ` : ''}
+                `;
+            } else if (item.question_type === 'enumeration') {
+                detailHtml = `
+                    <div class="review-data-block">
+                        <div class="review-data-row">
+                            <span>Submitted items:</span>
+                            <span>${escapeList(item.submitted_items)}</span>
+                        </div>
+                        ${item.matched_items && item.matched_items.length ? `
+                            <div class="review-data-row text-accent">
+                                <span>Matched items:</span>
+                                <strong>${escapeList(item.matched_items)}</strong>
+                            </div>
+                        ` : ''}
+                        ${item.missing_items && item.missing_items.length ? `
+                            <div class="review-data-row text-danger">
+                                <span>Missing items:</span>
+                                <strong>${escapeList(item.missing_items)}</strong>
+                            </div>
+                        ` : ''}
+                        <div class="review-data-row">
+                            <span>Expected full list:</span>
+                            <span>${escapeList(item.canonical_items)}</span>
+                        </div>
+                        ${item.order_matters ? '<small class="review-hint">Order of enumeration was graded strictly.</small>' : ''}
+                    </div>
+                `;
+            }
 
             return `
-                <div class="review-item-card ${state}">
+                <article class="review-item-card ${statusClass}">
                     <div class="review-item-header">
-                        <span>Question ${idx + 1}</span>
-                        <span>${earned} / ${maxPts} Pt${maxPts === 1 ? '' : 's'}</span>
+                        <div class="review-item-status-group">
+                            <span class="feedback-status-pill">${statusLabel}</span>
+                            <span class="quiz-tag">${escapeHtml(item.question_type.replace('_', ' '))}</span>
+                        </div>
+                        <span class="feedback-points-pill">${item.earned_points} / ${item.maximum_points} Pt${item.maximum_points === 1 ? '' : 's'}</span>
                     </div>
-                    <p class="review-item-qtext">${item.question.text}</p>
+
+                    <h4 class="review-item-qtext">Q${idx + 1}. ${escapeHtml(item.prompt)}</h4>
+
                     <div class="review-answer-block">
-                        <div><strong>Feedback:</strong> ${item.result.explanation || 'No additional note.'}</div>
-                        ${item.result.canonical_answer ? `<div><strong>Accepted Answer:</strong> ${item.result.canonical_answer}</div>` : ''}
+                        ${detailHtml}
                     </div>
-                </div>
+
+                    ${item.explanation ? `
+                        <div class="review-expl-box">
+                            <strong class="review-expl-label">Explanation</strong>
+                            <p class="review-expl-text">${escapeHtml(item.explanation)}</p>
+                        </div>
+                    ` : ''}
+                </article>
             `;
         }).join('');
     }
 
-    // Initialize first question
-    renderQuestion();
+    document.getElementById('open-review-btn')?.addEventListener('click', () => {
+        buildReviewModal();
+        if (reviewModal) {
+            reviewModal.hidden = false;
+            reviewModal.classList.add('is-active');
+            document.body.classList.add('modal-open');
+        }
+    });
+
+    // ================= REVIEW MODAL DISMISS & ESCAPE =================
+    const urlParams = new URLSearchParams(window.location.search);
+    const isReviewMode = urlParams.get('view') === 'review';
+    const chapterReviewUrl = document.getElementById('quiz-exit-link')?.getAttribute('href') || '';
+    const backToScoreBtn = document.getElementById('back-to-results-btn');
+
+    function exitReviewDrawer() {
+        if (isReviewMode && chapterReviewUrl) {
+            window.location.href = chapterReviewUrl;
+        } else if (reviewModal) {
+            reviewModal.hidden = true;
+            reviewModal.classList.remove('is-active');
+            document.body.classList.remove('modal-open');
+        }
+    }
+
+    document.getElementById('close-review-btn')?.addEventListener('click', exitReviewDrawer);
+    backToScoreBtn?.addEventListener('click', exitReviewDrawer);
+
+    reviewModal?.addEventListener('click', (e) => {
+        if (e.target === reviewModal) exitReviewDrawer();
+    });
+
+    // ================= KEYBOARD SHORTCUTS =================
+    document.addEventListener('keydown', (event) => {
+        if (event.repeat) return;
+
+        // Disengage if result summary or review modal is active
+        if (resultSheet?.classList.contains('open')) return;
+        if (reviewModal && !reviewModal.hidden) return;
+
+        const question = quiz.questions[currentIndex];
+        if (!question) return;
+
+        const isSpace = event.key === ' ' || event.code === 'Space';
+        const isEnter = event.key === 'Enter';
+
+        if (!isSpace && !isEnter) return;
+
+        const activeEl = document.activeElement;
+        const isTyping = Boolean(activeEl?.matches('input, textarea, select, [contenteditable="true"]'));
+        const isChoiceQuestion = question.type === 'multiple_choice' || question.type === 'true_false';
+
+        // 1. Before Grading (Submitting Answers)
+        if (!isCurrentGraded) {
+            // Space submits only Multiple Choice and True/False
+            if (isSpace) {
+                if (isChoiceQuestion && !isTyping && !actionBtn.disabled) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (activeEl && typeof activeEl.blur === 'function') activeEl.blur();
+                    handleCheckAnswer();
+                }
+                return;
+            }
+
+            // Enter submits when ready (advances fields like Tab for Enumeration)
+            if (isEnter) {
+                if (question.type === 'enumeration' && isTyping) {
+                    if (activeEl?.classList.contains('enumeration-input')) {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const enumInputs = Array.from(wrap.querySelectorAll('.enumeration-input'));
+                        const inputIdx = enumInputs.indexOf(activeEl);
+
+                        // If not on the last input, advance focus to the next field
+                        if (inputIdx !== -1 && inputIdx < enumInputs.length - 1) {
+                            enumInputs[inputIdx + 1].focus();
+                            return;
+                        }
+
+                        // On the last input: submit if an answer is provided, otherwise blur
+                        if (inputIdx === enumInputs.length - 1) {
+                            if (!actionBtn.disabled) {
+                                activeEl.blur();
+                                handleCheckAnswer();
+                            }
+                            return;
+                        }
+                    }
+                    return;
+                }
+
+                if (!actionBtn.disabled) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (isTyping && activeEl) activeEl.blur();
+                    handleCheckAnswer();
+                }
+            }
+            return;
+        }
+
+        // 2. After Grading (Drawer open: Next Question)
+        if (isSpace || isEnter) {
+            if (isTyping) return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (activeEl && typeof activeEl.blur === 'function') activeEl.blur();
+            sheetContinue?.click();
+        }
+    });
+
+    // ================= VIEW ROUTING (?view=review vs New Quiz) =================
+    let preloadedReview = null;
+    const reviewDataEl = document.getElementById('latest-review-data');
+    if (reviewDataEl && reviewDataEl.textContent.trim()) {
+        try {
+            preloadedReview = JSON.parse(reviewDataEl.textContent);
+            if (typeof preloadedReview === 'string') {
+                preloadedReview = JSON.parse(preloadedReview);
+            }
+        } catch (e) {
+            console.error('Failed to parse preloaded review data:', e);
+        }
+    }
+
+    if (isReviewMode) {
+        // 1. Hide quiz controls immediately
+        actionBtn.classList.add('is-hidden');
+        actionBtn.style.display = 'none';
+        if (progressFill && progressFill.parentElement) {
+            progressFill.parentElement.style.display = 'none';
+        }
+        setText('quiz-progress-label', '');
+
+        if (preloadedReview && Array.isArray(preloadedReview.review_items) && preloadedReview.review_items.length > 0) {
+            serverReviewData = preloadedReview;
+
+            if (backToScoreBtn) {
+                backToScoreBtn.style.display = 'none';
+            }
+
+            // Immediately launch Answer Review drawer
+            buildReviewModal();
+            if (reviewModal) {
+                reviewModal.hidden = false;
+                reviewModal.classList.add('is-active');
+                document.body.classList.add('modal-open');
+            }
+        } else {
+            // Fallback when review data is missing
+            wrap.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <div style="font-size: 2.5rem; margin-bottom: 12px;">📋</div>
+                    <h2 style="margin: 0 0 8px; font-size: 1.35rem; color: var(--ink);">Review Unavailable</h2>
+                    <p style="margin: 0 0 24px; color: var(--muted); font-size: 0.95rem;">
+                        Detailed answer breakdown is not available for this attempt.
+                    </p>
+                    <a href="${chapterReviewUrl || '../review/'}" class="btn btn-secondary" style="min-height: 44px; display: inline-flex; align-items: center;">
+                        &larr; Back to Chapter Review
+                    </a>
+                </div>
+            `;
+        }
+    } else if (quiz.questions && quiz.questions.length > 0) {
+        renderQuestion();
+    }
 });

@@ -221,14 +221,15 @@
                                 <span>View Unlock Requirements &rarr;</span>
                             </a>
                         {% else %}
-                            <a class="btn action-btn-pill btn-primary" href="{% url 'courses:chapter_review' chapter.pk %}">
+                            <a class="btn action-btn-pill btn-secondary" href="{% url 'courses:chapter_review' chapter.pk %}">
                                 <span aria-hidden="true">📖</span>
                                 <span>Review Lesson</span>
                             </a>
-                            {% if chapter.has_quiz %}
+                            <!-- Check chapter.quiz instead of chapter.has_quiz -->
+                            {% if chapter.quiz or chapter.has_quiz %}
                                 <a class="btn action-btn-pill action-btn-quiz" href="{% url 'courses:chapter_quiz' chapter.pk %}">
                                     <span aria-hidden="true">⚡</span>
-                                    <span>Take Quiz</span>
+                                    <span>{% if chapter.quiz_passed %}Retake Quiz{% else %}Take Quiz{% endif %} &rarr;</span>
                                 </a>
                             {% endif %}
                         {% endif %}

@@ -184,15 +184,14 @@ class XPTransaction(models.Model):
 
 
 class QuizAttempt(models.Model):
-    """One completed run of a Quiz by a User. Scoring happens server-side
-    in views.submit_quiz — this row is the permanent record of that result.
-    """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_attempts')
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='attempts')
-    score = models.PositiveIntegerField()
-    total_questions = models.PositiveIntegerField()
-    xp_earned = models.PositiveIntegerField(default=0)
+    score = models.FloatField(default=0)
+    total_questions = models.IntegerField(default=0)
+    xp_earned = models.IntegerField(default=0)
     completed_at = models.DateTimeField(auto_now_add=True)
+    # Ensure this line is present and saved:
+    review_data = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ['-completed_at']

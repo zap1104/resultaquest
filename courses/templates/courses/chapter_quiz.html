@@ -451,14 +451,35 @@
     .review-answer-block { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 0.84rem; }
     .review-answer-block strong { color: var(--ink); }
     .review-expl { margin: 0; color: var(--muted); font-size: 0.84rem; line-height: 1.5; }
-    .review-close-btn { width: 34px; height: 34px; padding: 0; }
+    .review-close-btn {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 1.25rem;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+        transition: all 0.18s ease;
+    }
+
+    .review-close-btn:hover {
+        border-color: var(--danger);
+        color: var(--danger);
+        background: rgba(239, 68, 68, 0.12);
+        transform: scale(1.06);
+    }
 </style>
 
 {% if quiz and quiz.questions.all %}
     <div class="quiz-page-container">
         <!-- Focus Exit & Progress Track -->
         <div class="quiz-focus-header">
-            <a href="{% url 'courses:chapter_review' chapter.pk %}" class="quiz-exit-btn" title="Exit Quiz">✕</a>
+            <a href="{% url 'courses:chapter_review' chapter.pk %}" class="quiz-exit-btn" id="quiz-exit-link" title="Exit Quiz">✕</a>
             <div class="quiz-progress-top">
                 <div id="quiz-progress-fill" class="quiz-progress-fill"></div>
             </div>
@@ -494,41 +515,67 @@
         </section>
     </div>
 
-    <!-- Final Result Sheet -->
-    <div id="result-sheet" class="result-sheet">
-        <h2 style="margin: 0; font-size: 1.6rem;">Quiz Complete! 🎉</h2>
-        <div class="sheet-stats">
-            <div class="sheet-stat-box"><div id="sheet-score" class="sheet-stat-val">0/0</div><div class="sheet-stat-label">Points</div></div>
-            <div class="sheet-stat-box"><div id="sheet-percentage" class="sheet-stat-val">0%</div><div class="sheet-stat-label">Percentage</div></div>
-            <div class="sheet-stat-box"><div id="sheet-xp" class="sheet-stat-val gold">+0</div><div class="sheet-stat-label">XP Earned</div></div>
-            <div class="sheet-stat-box"><div id="sheet-level" class="sheet-stat-val">1</div><div class="sheet-stat-label">Level</div></div>
-            <div class="sheet-stat-box"><div id="sheet-streak" class="sheet-stat-val streak">0</div><div class="sheet-stat-label">Day Streak</div></div>
+<!-- Teaching-Focused Academic Results Sheet -->
+    <div id="result-sheet" class="result-sheet" role="dialog" aria-modal="true" aria-labelledby="result-heading">
+        <div class="result-card-header">
+            <span class="result-badge" id="result-pass-badge">Passed</span>
+            <h2 id="result-heading" class="result-title">Quiz Results</h2>
+            <p id="result-summary-text" class="result-subtitle">See what you understood and what to revisit.</p>
         </div>
-        <div class="sheet-actions">
-            <button type="button" class="btn btn-secondary" id="open-review-btn">Review Answers &amp; Feedback</button>
-            <a href="{% url 'courses:course_detail' chapter.course.pk %}" id="continue-learning-btn" class="btn btn-primary btn-chunky" style="text-align: center;">
-                Continue Learning &rarr;
+
+        <div class="result-metric-grid">
+            <div class="result-metric">
+                <span>Score</span>
+                <strong id="sheet-score">0 / 0</strong>
+            </div>
+            <div class="result-metric">
+                <span>Percentage</span>
+                <strong id="sheet-percentage">0%</strong>
+            </div>
+            <div class="result-metric">
+                <span>XP Earned</span>
+                <strong id="sheet-xp" style="color: var(--accent);">+0 XP</strong>
+            </div>
+        </div>
+
+        <div class="result-actions-stack">
+            <button type="button" class="result-btn result-btn-primary" id="open-review-btn">
+                <span>Review Answers</span>
+                <span aria-hidden="true">&rarr;</span>
+            </button>
+            <a href="{% url 'courses:chapter_quiz' chapter.pk %}" class="result-btn result-btn-secondary" id="retake-quiz-btn">
+                <span class="btn-icon" aria-hidden="true">⚡</span>
+                <span>Retake Quiz</span>
+            </a>
+            <a href="{% url 'courses:chapter_review' chapter.pk %}" class="result-btn result-btn-ghost" id="return-course-btn">
+                <span>&larr; Return to Chapter Review</span>
             </a>
         </div>
     </div>
 
-    <!-- Review Answers Modal Drawer -->
-    <div class="review-drawer-backdrop" id="review-drawer-modal" aria-hidden="true">
+    <!-- Structured Answer Review Drawer / Modal -->
+    <div class="review-drawer-backdrop" id="review-drawer-modal" aria-hidden="true" hidden>
         <section class="review-drawer-card" role="dialog" aria-modal="true" aria-labelledby="review-drawer-title">
             <header class="review-drawer-header">
                 <div>
-                    <h2 id="review-drawer-title">Assessment Review</h2>
-                    <span id="review-header-score" class="quiz-progress-label"></span>
+                    <h2 id="review-drawer-title">Answer Review</h2>
+                    <p class="review-drawer-sub">Review your responses, awarded points, and explanations.</p>
                 </div>
-                <button type="button" class="quiz-exit-btn review-close-btn" id="close-review-btn" aria-label="Close review">✕</button>
+                <button type="button" class="review-close-btn" id="close-review-btn" aria-label="Close answer review">&times;</button>
             </header>
-            <div class="review-drawer-scroll" id="review-items-container"></div>
+
+            <div class="review-drawer-scroll" id="review-items-container">
+                <!-- Dynamically populated with sanitized format cards -->
+            </div>
+
             <footer class="review-drawer-footer">
                 <button type="button" class="btn btn-secondary" id="back-to-results-btn">Back to Score</button>
-                <a href="{% url 'courses:course_detail' chapter.course.pk %}" class="btn btn-primary btn-chunky">Continue Learning &rarr;</a>
+                <a href="{% url 'courses:chapter_review' chapter.pk %}" class="btn btn-primary">Review Chapter &rarr;</a>
             </footer>
         </section>
     </div>
+
+    {{ latest_attempt.review_data|json_script:"latest-review-data" }}
 
     <!-- Quiz Data Contract -->
     <script id="quiz-data" type="application/json">
