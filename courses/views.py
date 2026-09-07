@@ -415,6 +415,7 @@ def course_detail(request, pk):
         chapter.quiz_passed = completion_state["quiz_passed"]
         chapter.tested_out = completion_state["tested_out"]
         chapter.best_quiz_percentage = completion_state["best_quiz_percentage"]
+        chapter.has_quiz = completion_state["has_quiz"]
         chapter.previous_chapter = get_previous_chapter(chapter)
 
     progress = calculate_course_progress(request.user, course)
@@ -448,6 +449,8 @@ def chapter_review(request, pk):
             "previous_state": previous_state,
             "course": course,
             "pass_threshold": QUIZ_PASS_THRESHOLD,
+            "regular_pass_threshold": QUIZ_PASS_THRESHOLD,
+            "test_out_threshold": QUIZ_PASS_THRESHOLD,
         }, status=403)
 
     progress = calculate_course_progress(request.user, course)

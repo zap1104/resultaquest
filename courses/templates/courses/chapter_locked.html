@@ -107,6 +107,19 @@
         gap: 10px;
         margin-top: 22px;
     }
+
+    @media (max-width: 480px) {
+        .locked-chapter-page { padding: 16px 12px; min-height: calc(100dvh - var(--topbar-height) - 40px); align-items: flex-start; }
+        .locked-chapter-card { min-width: 0; max-width: 100%; padding: 24px 16px; border-radius: 18px; overflow-wrap: anywhere; }
+        .locked-chapter-icon { font-size: 2.4rem; margin-bottom: 8px; }
+        .locked-chapter-card h1 { font-size: 1.25rem; margin: 10px 0 8px; }
+        .locked-chapter-card p { font-size: 0.86rem; }
+        .locked-requirements { margin-top: 18px; padding: 14px; }
+        .requirement-row { flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 0; }
+        .requirement-row strong { max-width: 100%; }
+        .locked-actions { margin-top: 18px; gap: 8px; }
+        .locked-actions .btn { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; padding: 10px 14px; text-align: center; white-space: normal; }
+    }
 </style>
 
 <div class="page locked-chapter-page">
@@ -135,7 +148,7 @@
                     {% if previous_state.quiz_passed %}
                         <strong class="requirement-done">✓ {{ previous_state.best_quiz_percentage }}%</strong>
                     {% else %}
-                        <strong>&ge; {{ pass_threshold }}% Required</strong>
+                        <strong>&ge; {{ regular_pass_threshold|default:pass_threshold }}% Required</strong>
                     {% endif %}
                 </div>
             </div>
@@ -144,16 +157,16 @@
                 {% if not previous_state.lesson_completed %}
                     <div class="locked-divider"><span>guided path or quiz pass</span></div>
                     <p style="font-size: 0.86rem;">
-                        Read the lesson and mark it complete, or score at least <strong>{{ pass_threshold }}%</strong> on the quiz.
+                        Read the lesson and mark it complete, or score at least <strong>{{ regular_pass_threshold|default:pass_threshold }}%</strong> on the quiz.
                     </p>
                     <a href="{% url 'courses:chapter_review' prev_chapter.pk %}" class="btn btn-secondary">
                         Review Chapter {{ prev_chapter.order }}
                     </a>
                 {% endif %}
 
-                {% if prev_chapter.quiz %}
+                {% if previous_state.has_quiz %}
                     <a href="{% url 'courses:chapter_quiz' prev_chapter.pk %}" class="btn btn-primary btn-chunky">
-                        ⚡ Take Chapter {{ prev_chapter.order }} Quiz (&ge; {{ pass_threshold }}%) &rarr;
+                        ⚡ Take Chapter {{ prev_chapter.order }} Quiz (&ge; {{ regular_pass_threshold|default:pass_threshold }}%) &rarr;
                     </a>
                 {% endif %}
 
