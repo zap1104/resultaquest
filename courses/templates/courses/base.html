@@ -26,10 +26,23 @@
 </head>
 <body>
     <header class="topbar">
-        <a class="brand" href="{% url 'courses:dashboard' %}">🎮 StudyQuest</a>
-        
+        <div class="topbar-left">
+            {% if user.is_authenticated %}
+                <button type="button" class="mobile-menu-button" id="mobile-nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer">
+                    <span aria-hidden="true">☰</span>
+                </button>
+            {% endif %}
+            <a class="brand" href="{% url 'courses:dashboard' %}">🎮 StudyQuest</a>
+        </div>
+
         {% if user.is_authenticated %}
-            <div class="stats">
+            <nav class="topbar-desktop-nav" aria-label="Main navigation">
+                <a href="{% url 'courses:dashboard' %}" class="topbar-link">Dashboard</a>
+                <a href="{% url 'courses:course_list' %}" class="topbar-link">Course Library</a>
+                <a href="{% url 'courses:course_create' %}" class="topbar-link">Create Course</a>
+            </nav>
+
+            <div class="stats topbar-desktop-stats">
                 <div class="topbar-plan">
                     <button type="button" class="topbar-plan-chip {% if user.userprofile.plan == 'plus' %}is-plus{% endif %}" id="topbar-plan-btn" aria-expanded="false" aria-controls="topbar-plan-menu"><span class="plan-dot"></span>{% if user.userprofile.plan == 'plus' %}Plus{% else %}Free{% endif %}<span aria-hidden="true">▾</span></button>
                     <div class="topbar-plan-menu" id="topbar-plan-menu" hidden>
@@ -48,6 +61,27 @@
             </div>
         {% endif %}
     </header>
+
+    {% if user.is_authenticated %}
+        <nav class="mobile-nav-panel" id="mobile-nav-drawer" aria-label="Mobile navigation" hidden>
+            <div class="mobile-nav-links">
+                <a href="{% url 'courses:dashboard' %}">📊 Dashboard</a>
+                <a href="{% url 'courses:course_list' %}">📚 Course Library</a>
+                <a href="{% url 'courses:course_create' %}">⚡ Create Course</a>
+            </div>
+
+            <div class="mobile-nav-stats">
+                <span class="stat">🏅 Level {{ user.userprofile.current_level|default:1 }}</span>
+                <span class="stat">⭐ {{ user.userprofile.total_xp|default:0 }} XP</span>
+                <span class="stat">🔥 {{ user.userprofile.streak_days|default:0 }} Day Streak</span>
+            </div>
+
+            <form method="post" action="{% url 'logout' %}" style="margin-top: 16px;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost" style="width: 100%; text-align: center; border: 1px solid var(--border);">Log Out</button>
+            </form>
+        </nav>
+    {% endif %}
 
     <main class="page {% block page_class %}{% endblock %}">
         {% block content %}{% endblock %}
@@ -112,6 +146,44 @@
             document.addEventListener('click', (event) => {
                 if (!event.target.closest('.topbar-plan')) menu.hidden = true;
             });
+        })();
+    </script>
+    <script>
+        (() => {
+            const toggle = document.getElementById('mobile-nav-toggle');
+            const drawer = document.getElementById('mobile-nav-drawer');
+            if (!toggle || !drawer) return;
+
+            const closeDrawer = () => {
+                drawer.hidden = true;
+                drawer.classList.remove('open');
+                toggle.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+            };
+
+            toggle.addEventListener('click', () => {
+                const open = drawer.hidden;
+                drawer.hidden = !open;
+                drawer.classList.toggle('open', open);
+                toggle.setAttribute('aria-expanded', String(open));
+                document.body.style.overflow = open ? 'hidden' : '';
+            });
+
+            drawer.addEventListener('click', (event) => {
+                if (event.target === drawer) closeDrawer();
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !drawer.hidden) {
+                    closeDrawer();
+                    toggle.focus();
+                }
+            });
+
+            const syncNavigationForViewport = () => {
+                if (window.innerWidth > 1050 && !drawer.hidden) closeDrawer();
+            };
+            window.addEventListener('resize', syncNavigationForViewport);
         })();
     </script>
 </body>

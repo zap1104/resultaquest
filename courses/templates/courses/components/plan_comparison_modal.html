@@ -1,0 +1,68 @@
+<div id="plus-preview-modal" class="global-plan-modal" hidden aria-hidden="true">
+    <div class="global-plan-dialog" role="dialog" aria-modal="true" aria-labelledby="global-plan-title">
+        <button type="button" class="global-plan-close" id="global-plan-close" aria-label="Close plan comparison">&times;</button>
+        <span class="modal-eyebrow">StudyQuest Plans</span>
+        <h2 id="global-plan-title">Choose the plan for your workload</h2>
+        <p>Core learning tools remain available on both plans.</p>
+        <div class="global-plan-cards">
+            <section>
+                <strong>StudyQuest Free</strong>
+                <p>Focused study for occasional use.</p>
+                <ul><li>1 AI generation per week</li><li>Up to 5 active courses</li><li>Mixed assessments included</li></ul>
+                <button type="button" class="btn btn-secondary" disabled>Current Plan</button>
+            </section>
+            <section class="global-plan-plus">
+                <strong>StudyQuest Plus</strong>
+                <p>More room for multiple subjects.</p>
+                <ul><li>3 AI generations per week</li><li>Up to 15 active courses</li><li>Ad-free studying</li></ul>
+                <button type="button" class="btn btn-primary" disabled>Preview Only</button>
+            </section>
+        </div>
+        <p class="global-plan-note">StudyQuest Plus is a proposed plan. Billing is not connected.</p>
+    </div>
+</div>
+
+<style>
+    .global-plan-modal[hidden] { display: none; }
+    .global-plan-modal { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 20px; overflow-y: auto; background: rgba(5, 10, 22, .88); backdrop-filter: blur(9px); }
+    .global-plan-dialog { position: relative; width: min(100%, 760px); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 30px 26px 24px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); color: var(--ink); }
+    .global-plan-dialog h2 { margin: 6px 44px 8px 0; }
+    .global-plan-dialog > p { color: var(--muted); }
+    .global-plan-close { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--muted); font-size: 1.3rem; cursor: pointer; }
+    .global-plan-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+    .global-plan-cards section { padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
+    .global-plan-cards strong { font-size: 1.05rem; }
+    .global-plan-cards p, .global-plan-cards li, .global-plan-note { color: var(--muted); font-size: .84rem; line-height: 1.5; }
+    .global-plan-cards ul { padding-left: 20px; min-height: 76px; }
+    .global-plan-cards .btn { width: 100%; }
+    .global-plan-plus { border-color: var(--primary) !important; }
+    .global-plan-note { margin-bottom: 0; }
+    @media (max-width: 680px) { .global-plan-cards { grid-template-columns: 1fr; } .global-plan-dialog { padding: 26px 16px 20px; } }
+</style>
+
+<script>
+    (() => {
+        const modal = document.getElementById('plus-preview-modal');
+        const close = document.getElementById('global-plan-close');
+        const open = () => {
+            if (!modal) return;
+            modal.hidden = false;
+            modal.setAttribute('aria-hidden', 'false');
+            document.documentElement.classList.add('modal-open');
+            document.body.classList.add('modal-open');
+            close?.focus();
+        };
+        const hide = () => {
+            if (!modal) return;
+            modal.hidden = true;
+            modal.setAttribute('aria-hidden', 'true');
+            document.documentElement.classList.remove('modal-open');
+            document.body.classList.remove('modal-open');
+        };
+        document.getElementById('library-compare-plans')?.addEventListener('click', open);
+        document.getElementById('mobile-compare-plans')?.addEventListener('click', open);
+        close?.addEventListener('click', hide);
+        modal?.addEventListener('click', event => { if (event.target === modal) hide(); });
+        document.addEventListener('keydown', event => { if (event.key === 'Escape' && modal && !modal.hidden) hide(); });
+    })();
+</script>

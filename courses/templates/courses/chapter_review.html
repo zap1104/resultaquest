@@ -194,7 +194,7 @@
             <article class="lesson-preview-card">
                 <span class="lesson-preview-label">Quick Review</span>
                 <div class="lesson-preview">
-                    <p>{{ chapter.source_data.overview|default:chapter.review_content }}</p>
+                    <p>{{ chapter_overview }}</p>
                     <div class="lesson-preview-fade" aria-hidden="true"></div>
                 </div>
                 <div class="lesson-actions">
@@ -267,13 +267,12 @@
 
         <div class="reader-content" id="reader-content" tabindex="0">
             <article class="reader-content-inner">
-                {% if chapter.source_data.sections %}
-                    <!-- Header & Focus -->
-                    <div class="cram-overview-card">
-                        <span class="cram-badge">{{ chapter.source_data.week_label|default:"Chapter Focus" }}</span>
-                        <p class="cram-lead">{{ chapter.source_data.focus|default:chapter.source_data.overview }}</p>
-                    </div>
+                <div class="cram-overview-card">
+                    <span class="cram-badge">{{ chapter_data.week_label|default:"Chapter Focus" }}</span>
+                    <p class="cram-lead">{{ chapter_overview }}</p>
+                </div>
 
+                {% if chapter_data.sections %}
                     <!-- Learning Objectives -->
                     {% if chapter.source_data.learning_objectives %}
                         <div class="cram-section">
@@ -405,7 +404,55 @@
                         </div>
                     {% endif %}
                 {% else %}
-                    <p>{{ chapter.review_content|linebreaks }}</p>
+                    {% if chapter_data.key_terms %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Key Terms</h3>
+                            {% for term in chapter_data.key_terms %}
+                                <div class="concept-card">
+                                    <div class="concept-term">{{ term.term }}</div>
+                                    <p class="concept-formal">{{ term.definition }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% if chapter_data.quick_facts %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Quick Facts</h3>
+                            <ul class="cram-facts-list">
+                                {% for fact in chapter_data.quick_facts %}<li>{{ fact }}</li>{% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    {% if chapter_data.timeline %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Timeline</h3>
+                            <ul class="cram-facts-list">
+                                {% for item in chapter_data.timeline %}<li>{{ item }}</li>{% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    {% if chapter_data.real_world_examples %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Real-World Examples</h3>
+                            <ul class="cram-facts-list">
+                                {% for example in chapter_data.real_world_examples %}<li>{{ example }}</li>{% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    {% if chapter_data.analogy %}
+                        <div class="cram-section">
+                            <h3 class="cram-section-title">Analogy</h3>
+                            <p class="section-intro">{{ chapter_data.analogy.explanation|default:chapter_data.analogy }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if not chapter_data.key_terms and not chapter_data.quick_facts and not chapter_data.timeline and not chapter_data.real_world_examples and not chapter_data.analogy %}
+                        <p>{{ chapter_overview|linebreaks }}</p>
+                    {% endif %}
                 {% endif %}
             </article>
         </div>

@@ -120,22 +120,31 @@ body {
    3. TOPBAR & FLOATING DARK MODE TOGGLE
    ========================================================= */
 .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 24px;
-    background: var(--surface-glass);
-    border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
     z-index: 1000;
     min-height: var(--topbar-height);
+    padding: 0 clamp(20px, 3vw, 46px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    background: rgba(17, 26, 49, 0.94);
+    border-bottom: 1px solid var(--border);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.topbar-left {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: clamp(24px, 3vw, 48px);
 }
 
 .brand {
+    flex-shrink: 0;
+    white-space: nowrap;
     font-weight: 800;
     font-size: 1.25rem;
     color: var(--primary);
@@ -143,6 +152,10 @@ body {
 }
 
 .stats { display: flex; gap: 14px; align-items: center; }
+.topbar-desktop-stats {
+    flex-shrink: 0;
+    margin-left: auto;
+}
 .stat {
     background: var(--bg);
     border-radius: 999px;
@@ -985,6 +998,87 @@ body {
 }
 
 /* =========================================================
+   13. MOBILE NAVIGATION & FOUNDATIONS (Phases M1 & M2)
+   ========================================================= */
+.topbar-desktop-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.topbar-link {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+.topbar-link:hover { color: var(--primary); }
+
+.mobile-menu-button {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+
+.mobile-nav-panel {
+    display: none;
+    position: fixed;
+    inset: var(--topbar-height) 0 0;
+    z-index: 1100;
+    background: var(--bg);
+    padding: 20px;
+    overflow-y: auto;
+}
+.mobile-nav-panel.open {
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-nav-links a {
+    display: block;
+    width: 100%;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.mobile-nav-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+@media (max-width: 1050px) {
+    .topbar-desktop-nav,
+    .topbar-desktop-stats { display: none !important; }
+    .mobile-menu-button { display: inline-flex; }
+    .topbar-left { gap: 12px; }
+}
+
+@media (min-width: 1051px) {
+    .mobile-menu-button { display: none; }
+    .mobile-nav-panel { display: none !important; }
+}
+
+/* =========================================================
    12. THE FORGE (Course Creation Dropzone)
    ========================================================= */
 /* Utility to vertically center the entire page */
@@ -1213,4 +1307,77 @@ body {
 }
 @media (max-width: 640px) {
     .feature-pills { flex-wrap: wrap; }
+}
+
+/* =========================================================
+   14. AUTH & LAUNCHER MOBILE OPTIMIZATION
+   ========================================================= */
+@media (max-width: 768px) {
+    .launcher-page-wrap {
+        height: auto !important;
+        min-height: calc(100dvh - var(--topbar-height) - 40px);
+        padding: 20px 16px 40px !important;
+        align-items: flex-start;
+    }
+
+    .launcher-container {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .launcher-hero {
+        font-size: 1.7rem;
+    }
+
+    .mascot-stage {
+        max-height: 180px;
+        overflow: hidden;
+        margin: 0 auto;
+    }
+
+    .mascot-wrap {
+        max-width: 200px;
+    }
+
+    .auth-card {
+        padding: 20px 18px;
+        max-width: 100%;
+    }
+
+    /* 16px font prevents iOS Safari auto-zoom on input focus */
+    .auth-card input[type=text],
+    .auth-card input[type=password],
+    .auth-card input[type=email] {
+        font-size: 16px !important;
+        min-height: 48px;
+    }
+
+    /* 48px accessible touch targets */
+    .tab-btn {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .auth-card .btn-chunky {
+        width: 100%;
+        min-height: 48px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* On phone screens, remove the decorative mascot so credentials appear above the fold */
+    .mascot-stage,
+    .feature-pills {
+        display: none;
+    }
+
+    .launcher-hero {
+        font-size: 1.45rem;
+    }
+
+    .launcher-subtext {
+        font-size: 0.82rem;
+    }
 }

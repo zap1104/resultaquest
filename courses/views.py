@@ -454,10 +454,18 @@ def chapter_review(request, pk):
     quiz = getattr(chapter, "quiz", None)
     question_count = quiz.questions.count() if quiz else 0
     completion_state = get_chapter_completion_state(request.user, chapter)
+    chapter_data = chapter.source_data or {}
+    chapter_overview = (
+        chapter_data.get("focus")
+        or chapter_data.get("overview")
+        or chapter.review_content
+        or "No chapter review content is available."
+    )
 
     return render(request, "courses/chapter_review.html", {
         "chapter": chapter,
-        "chapter_data": chapter.source_data or {},
+        "chapter_data": chapter_data,
+        "chapter_overview": chapter_overview,
         "has_quiz": quiz is not None,
         "question_count": question_count,
         "is_completed": completion_state["lesson_completed"],
