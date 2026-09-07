@@ -82,7 +82,6 @@ body {
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
     position: relative;
-    /* Flex setup to force footer to the bottom */
     display: flex;
     flex-direction: column;
     overflow-x: clip;
@@ -96,7 +95,7 @@ body {
 }
 
 .page {
-    flex: 1; /* Pushes footer down */
+    flex: 1;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -412,6 +411,29 @@ body {
 .quiz-result { text-align: center; padding: 20px 0; }
 
 /* =========================================================
+   QUIZ PROGRESS COUNTER & COMPLETION BADGE
+   ========================================================= */
+.quiz-progress-label {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin: 8px 0 0;
+    letter-spacing: 0.02em;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.quiz-progress-label.is-complete {
+    font-size: 1.15rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: 10px;
+    text-shadow: 0 0 16px rgba(0, 194, 168, 0.45);
+}
+
+/* =========================================================
    8. GAME LAUNCHER & LANDING PORTAL
    ========================================================= */
 .portal-atmosphere {
@@ -546,8 +568,6 @@ body {
     left: 21.5%;
     width: 65%;
     height: 26.5%;
-    
-    /* Fixed dark-mode translucent cyan glass for the emissive display */
     background: rgba(3, 105, 161, 0.38) !important;
     border: 1px solid #00f0ff !important;
     border-radius: 8px;
@@ -685,7 +705,7 @@ body {
 }
 .xp-bar-fill {
     height: 100%;
-    width: 0%; /* Default before JS animation */
+    width: 0%;
     background: linear-gradient(90deg, var(--primary), var(--accent));
     transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -757,7 +777,7 @@ body {
 }
 .trajectory-fill { 
     height: 100%; 
-    width: 0%; /* Default before JS animation */
+    width: 0%;
     background: linear-gradient(90deg, var(--primary), var(--accent)); 
     transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1145,7 +1165,6 @@ body {
 /* =========================================================
    12. THE FORGE (Course Creation Dropzone)
    ========================================================= */
-/* Utility to vertically center the entire page */
 .forge-page-wrap {
     justify-content: center;
     align-items: center;
@@ -1174,7 +1193,7 @@ body {
     padding: 32px 24px; 
     text-align: center;
     transition: all 0.2s ease;
-    margin-bottom: 12px; /* Tighter grouping */
+    margin-bottom: 12px;
     position: relative;
 }
 .drop-zone:hover, .drop-zone.dragover {
@@ -1279,7 +1298,7 @@ body {
 .supported-formats {
     font-size: 0.8rem;
     color: var(--muted);
-    margin-bottom: 24px; /* Tighter visual link to cards below */
+    margin-bottom: 24px;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -1292,7 +1311,7 @@ body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px; 
-    margin-bottom: 24px; /* Tighter to the button */
+    margin-bottom: 24px;
 }
 .info-card {
     padding: 18px; 
@@ -1350,7 +1369,6 @@ body {
     letter-spacing: 0.02em;
 }
 
-/* "Into a Game." headline — pixelated, keeps the gradient-text color from .hero-highlight */
 .pixel-hero {
     font-family: 'Press Start 2P', 'Segoe UI', system-ui, sans-serif;
     font-size: 0.70em;
@@ -1360,7 +1378,6 @@ body {
     letter-spacing: 0.01em;
 }
 
-/* Tighten the 3-pill row so it never wraps at normal widths */
 .feature-pills {
     display: flex;
     gap: 8px;
@@ -1408,7 +1425,6 @@ body {
         max-width: 100%;
     }
 
-    /* 16px font prevents iOS Safari auto-zoom on input focus */
     .auth-card input[type=text],
     .auth-card input[type=password],
     .auth-card input[type=email] {
@@ -1416,7 +1432,6 @@ body {
         min-height: 48px;
     }
 
-    /* 48px accessible touch targets */
     .tab-btn {
         min-height: 44px;
         display: flex;
@@ -1431,7 +1446,6 @@ body {
 }
 
 @media (max-width: 480px) {
-    /* On phone screens, remove the decorative mascot so credentials appear above the fold */
     .mascot-stage,
     .feature-pills {
         display: none;
@@ -1449,15 +1463,12 @@ body {
 /* =========================================================
    PHASE M9: SHARED MODALS & OVERLAYS (CENTERED & ADAPTIVE)
    ========================================================= */
-
-/* Prevent background scroll leak */
 body.modal-open,
 html.modal-open {
     overflow: hidden !important;
     touch-action: none;
 }
 
-/* Base Backdrop: Centered & Dynamic Viewport Insets */
 .sponsor-modal-backdrop,
 .sq-modal-backdrop,
 .plus-modal-backdrop {
@@ -1487,7 +1498,6 @@ html.modal-open {
     pointer-events: none !important;
 }
 
-/* Base Modal Shell */
 .sponsor-modal-card {
     position: relative;
     width: min(100%, 460px);
@@ -1503,7 +1513,6 @@ html.modal-open {
     margin: auto;
 }
 
-/* Close Hitbox (44px Accessible Target) */
 .sponsor-modal-close {
     position: absolute;
     top: 14px;
@@ -1539,7 +1548,6 @@ html.modal-open {
     margin: 0 0 16px;
 }
 
-/* Sponsor Poster Adaptive Cropping */
 .sponsor-media-wrap {
     width: 100%;
     height: 200px;
@@ -1570,7 +1578,6 @@ html.modal-open {
     min-height: 48px;
 }
 
-/* Plan Comparison Dialog */
 .sponsor-modal-card.plan-comparison-card {
     width: min(100%, 760px);
     max-height: calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
@@ -1600,7 +1607,6 @@ html.modal-open {
     margin: 0 0 14px;
 }
 
-/* 2-Column Plan Comparison Grid */
 .plan-cards {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1660,7 +1666,6 @@ html.modal-open {
     justify-content: center;
 }
 
-/* Detailed Comparison Matrix */
 .plan-matrix {
     display: grid;
     gap: 6px;
@@ -1692,7 +1697,6 @@ html.modal-open {
     color: var(--muted);
 }
 
-/* Responsive Overrides (Mobile Portrait) */
 @media (max-width: 680px) {
     .plan-cards {
         grid-template-columns: 1fr;
@@ -1704,7 +1708,6 @@ html.modal-open {
     }
 }
 
-/* Responsive Overrides (Phone Landscape) */
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 950px) {
     .sponsor-media-wrap {
         height: 120px;
@@ -1716,15 +1719,16 @@ html.modal-open {
 }
 
 /* =========================================================
-   SPRINT G1: ACADEMIC QUIZ REVIEW & RESULTS DRAWER
+   SPRINT G1 & G7: FOCUSED RESULTS CARD & MODAL REVIEW
    ========================================================= */
 .result-sheet {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 1300;
-    max-width: 640px;
+    z-index: 1302;
+    isolation: isolate;
+    max-width: 600px;
     max-height: calc(100dvh - 16px);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -1732,27 +1736,28 @@ html.modal-open {
     background: var(--surface);
     border: 1px solid var(--border);
     border-bottom: 0;
-    border-radius: 24px 24px 0 0;
-    padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
-    box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.55);
+    border-radius: 32px 32px 0 0;
+    padding: 34px 28px calc(34px + env(safe-area-inset-bottom));
+    box-shadow: 0 -22px 60px rgba(0, 0, 0, 0.6);
     transform: translateY(110%);
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    align-items: center;
+    gap: 20px;
 }
 .result-sheet.open { transform: translateY(0); }
 
 .result-card-header { text-align: center; }
 .result-badge {
     display: inline-block;
-    padding: 3px 10px;
+    padding: 4px 14px;
     border-radius: 999px;
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 .result-badge.passed {
     background: rgba(0, 194, 168, 0.14);
@@ -1765,20 +1770,23 @@ html.modal-open {
     border: 1px solid rgba(255, 184, 0, 0.3);
 }
 
-.result-title { margin: 0 0 4px; font-size: 1.35rem; font-weight: 900; color: var(--ink); }
-.result-subtitle { margin: 0; font-size: 0.84rem; color: var(--muted); }
+.result-title { margin: 0 0 6px; font-size: 1.55rem; font-weight: 900; color: var(--ink); }
+.result-subtitle { margin: 0; font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
 
+/* Metrics span edge-to-edge inside the focused 600px frame */
 .result-metric-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
 }
 
 .result-metric {
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 8px;
+    border-radius: 14px;
+    padding: 14px 10px;
     text-align: center;
 }
 .result-metric span {
@@ -1790,25 +1798,255 @@ html.modal-open {
 }
 .result-metric strong {
     display: block;
-    margin-top: 4px;
-    font-size: 1.05rem;
+    margin-top: 6px;
+    font-size: 1.2rem;
     color: var(--ink);
 }
 
+/* Action Stack spans edge-to-edge inside the focused 600px frame */
 .result-actions-stack {
+    width: 100%;
+    max-width: 100%;
+    margin: 8px auto 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
 }
-.result-actions-stack .btn {
+
+.result-actions-stack .result-btn {
     width: 100%;
-    min-height: 46px;
+    min-height: 50px;
+    padding: 12px 20px;
+    border-radius: 14px;
+    font-size: 0.98rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 10px;
+    text-decoration: none;
+    box-sizing: border-box;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Review Drawer Modal */
+.result-btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #ffffff !important;
+    box-shadow: 0 4px 16px rgba(108, 92, 231, 0.38);
+}
+.result-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(108, 92, 231, 0.55);
+    filter: brightness(1.05);
+}
+.result-btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+}
+
+.result-btn-secondary {
+    background: var(--bg);
+    border: 1.5px solid var(--border) !important;
+    color: var(--ink) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+.result-btn-secondary:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent) !important;
+    background: rgba(0, 194, 168, 0.08);
+    color: var(--accent) !important;
+    box-shadow: 0 6px 20px rgba(0, 194, 168, 0.18);
+}
+.result-btn-secondary:active {
+    transform: translateY(0);
+}
+.result-btn-secondary .btn-icon {
+    font-size: 1.15rem;
+    color: var(--gold);
+    transition: transform 0.2s ease;
+}
+.result-btn-secondary:hover .btn-icon {
+    transform: scale(1.2) rotate(-8deg);
+}
+
+.result-btn-ghost {
+    background: transparent;
+    color: var(--muted) !important;
+    min-height: 44px !important;
+    font-size: 0.9rem !important;
+    font-weight: 700;
+}
+.result-btn-ghost:hover {
+    color: var(--ink) !important;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border);
+}
+
+/* =========================================================
+   RESULT PRESENTATION: 50/50 MASCOT & SPEECH DIALOGUE
+   ========================================================= */
+.result-presentation {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    z-index: 1301;
+
+    /* Aligns width comfortably over the 600px results card */
+    width: min(640px, calc(100vw - 28px));
+    min-height: 280px;
+
+    /* Equal 50/50 split */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: flex-end;
+    gap: 16px;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transform: translateX(-50%) translateY(90px);
+    transition:
+        transform 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.3s ease,
+        visibility 0s linear 0.65s;
+}
+
+body.show-result-mascot .result-presentation {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+    transition:
+        transform 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.3s ease,
+        visibility 0s;
+}
+
+/* Mascot Stage: Enlarged & Anchored to bottom overlap */
+.result-mascot-stage {
+    position: relative;
+    width: 100%;
+    height: 330px; /* Taller stage so he rises prominently above the sheet */
+    overflow: visible;
+
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.result-mascot-img {
+    height: 100%;
+    max-height: 330px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+    object-position: center bottom;
+    filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.5));
+}
+
+/* Dialogue Speech Bubble: Shifted Up & Left toward Mascot */
+.result-guidance {
+    position: relative;
+    max-width: 270px;
+    margin-bottom: 155px; /* Lifts the bubble higher toward eye/head level */
+    margin-left: -20px;   /* Shifts the bubble closer to the mascot */
+    padding: 18px 20px;
+    border: 1.5px solid rgba(108, 92, 231, 0.45);
+    border-radius: 18px;
+    background: rgba(17, 26, 49, 0.96);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+/* Speech bubble pointer centered vertically on the shifted bubble */
+.result-guidance::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -11px;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 9px solid transparent;
+    border-bottom: 9px solid transparent;
+    border-right: 11px solid rgba(108, 92, 231, 0.45);
+}
+
+.result-guidance::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -9px;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 10px solid rgba(17, 26, 49, 0.96);
+}
+
+.result-guidance-title {
+    display: block;
+    margin-bottom: 6px;
+    color: #ffffff;
+    font-size: 1.15rem;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+.result-guidance-message {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+.result-guidance-message b {
+    color: var(--accent);
+    font-weight: 800;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 640px) {
+    .result-presentation {
+        width: calc(100vw - 24px);
+        min-height: 200px;
+        grid-template-columns: 130px 1fr;
+        gap: 12px;
+    }
+
+    .result-mascot-stage {
+        height: 220px;
+    }
+
+    .result-mascot-img {
+        max-height: 220px;
+    }
+    
+    .result-guidance {
+        margin-bottom: 24px;
+        margin-left: 0;
+        padding: 12px 14px;
+        border-radius: 14px;
+    }
+
+    .result-guidance-title {
+        font-size: 0.95rem;
+    }
+
+    .result-guidance-message {
+        font-size: 0.82rem;
+        line-height: 1.45;
+    }
+}
+
+/* =========================================================
+   REVIEW DRAWER MODAL BREAKDOWN
+   ========================================================= */
 .review-drawer-backdrop {
     position: fixed;
     inset: 0;
@@ -1863,7 +2101,6 @@ html.modal-open {
     background: var(--bg);
 }
 
-/* Review Item Breakdown Cards */
 .review-item-card {
     display: flex;
     flex-direction: column;
@@ -1938,9 +2175,40 @@ html.modal-open {
 .review-item-footer { display: flex; justify-content: flex-end; margin-top: 4px; }
 .review-topic-btn { color: var(--primary) !important; font-weight: 800; padding: 4px 10px; }
 
+/* Responsive Overrides */
 @media (max-width: 640px) {
     .result-sheet {
-        padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+        padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+        border-radius: 24px 24px 0 0;
+    }
+
+    .result-presentation {
+        width: calc(100vw - 24px);
+        min-height: 190px;
+        grid-template-columns: 120px minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .result-mascot-stage {
+        height: 190px;
+    }
+
+    .result-mascot-img {
+        width: 155px;
+    }
+
+    .result-guidance {
+        padding: 12px 14px;
+        border-radius: 14px;
+    }
+
+    .result-guidance-title {
+        font-size: 0.95rem;
+    }
+
+    .result-guidance-message {
+        font-size: 0.8rem;
+        line-height: 1.4;
     }
 
     .review-drawer-card {
@@ -1965,89 +2233,28 @@ html.modal-open {
     }
 }
 
-/* =========================================================
-   UPGRADED RESULT SHEET ACTION STACK
-   ========================================================= */
-.result-actions-stack {
-    width: 100%;
-    max-width: 440px;
-    margin: 18px auto 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px; /* Uniform spacing between all 3 buttons */
+@media (max-width: 380px) {
+    .result-presentation {
+        grid-template-columns: 100px minmax(0, 1fr);
+    }
+
+    .result-mascot-stage {
+        height: 160px;
+    }
+
+    .result-mascot-img {
+        width: 135px;
+    }
+
+    .result-guidance-message {
+        font-size: 0.75rem;
+    }
 }
 
-.result-actions-stack .result-btn {
-    width: 100%;
-    min-height: 50px;
-    padding: 12px 20px;
-    border-radius: 14px;
-    font-size: 0.98rem;
-    font-weight: 800;
-    letter-spacing: 0.01em;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    text-decoration: none;
-    box-sizing: border-box;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* 1. Primary Action: Review Answers */
-.result-btn-primary {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    color: #ffffff !important;
-    box-shadow: 0 4px 16px rgba(108, 92, 231, 0.38);
-}
-.result-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(108, 92, 231, 0.55);
-    filter: brightness(1.05);
-}
-.result-btn-primary:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
-}
-
-/* 2. Secondary Action: Retake Quiz (Contrasts against modal surface) */
-.result-btn-secondary {
-    background: var(--bg);
-    border: 1.5px solid var(--border) !important;
-    color: var(--ink) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-.result-btn-secondary:hover {
-    transform: translateY(-2px);
-    border-color: var(--accent) !important;
-    background: rgba(0, 194, 168, 0.08);
-    color: var(--accent) !important;
-    box-shadow: 0 6px 20px rgba(0, 194, 168, 0.18);
-}
-.result-btn-secondary:active {
-    transform: translateY(0);
-}
-.result-btn-secondary .btn-icon {
-    font-size: 1.15rem;
-    color: var(--gold);
-    transition: transform 0.2s ease;
-}
-.result-btn-secondary:hover .btn-icon {
-    transform: scale(1.2) rotate(-8deg);
-}
-
-/* 3. Tertiary Action: Return to Learning Path */
-.result-btn-ghost {
-    background: transparent;
-    color: var(--muted) !important;
-    min-height: 44px !important;
-    font-size: 0.9rem !important;
-    font-weight: 700;
-}
-.result-btn-ghost:hover {
-    color: var(--ink) !important;
-    background: rgba(255, 255, 255, 0.04);
-    border-color: var(--border);
+@media (prefers-reduced-motion: reduce) {
+    .result-presentation,
+    body.show-result-mascot .result-presentation {
+        transition: opacity 0.01ms linear;
+        transform: translateX(-50%);
+    }
 }

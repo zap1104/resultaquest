@@ -54,6 +54,67 @@ document.addEventListener('DOMContentLoaded', () => {
         return (items || []).map(escapeHtml).join(' • ');
     }
 
+    function setResultPresentation(resultData) {
+        if (!resultData) return;
+
+        const mascotImg = document.getElementById('result-mascot-img');
+        const guidanceTitle = document.getElementById('result-guidance-title');
+        const guidanceMessage = document.getElementById('result-guidance-message');
+
+        const percentage = Number(resultData.percentage || 0);
+        const passed = percentage >= 75 || Boolean(resultData.passed);
+
+        let sprite;
+        let titleText;
+        let messageHtml;
+
+        if (percentage === 100) {
+            sprite = '/static/courses/images/mascot_result_excellent.png';
+            titleText = 'That was excellent!';
+            messageHtml = "You <b>aced</b> every single question! Perfect score — you've completely mastered this chapter.";
+        } else if (percentage >= 90) {
+            sprite = '/static/courses/images/mascot_result_excellent.png';
+            titleText = 'That was amazing!';
+            messageHtml = 'You barely made any errors! Come <b>review</b> the couple you missed and we are golden.';
+        } else if (passed) {
+            sprite = '/static/courses/images/mascot_result_passed.png';
+            titleText = 'You did well!';
+            messageHtml = "You <b>passed<b> the quiz! Let's take a quick look at your answers to lock in what you've learned.";
+        } else {
+            sprite = '/static/courses/images/mascot_result_review.png';
+            titleText = "You'll get it next time!";
+            messageHtml = 'Come <b>review</b> this chapter with me so we can crush the retake together!';
+        }
+
+        if (mascotImg) mascotImg.src = sprite;
+        if (guidanceTitle) guidanceTitle.textContent = titleText;
+        if (guidanceMessage) guidanceMessage.innerHTML = messageHtml;
+    }
+
+    function positionResultPresentation() {
+        const presentation = document.getElementById('result-presentation');
+        if (!presentation || !resultSheet) return;
+
+        const resultHeight = resultSheet.getBoundingClientRect().height;
+        const overlap = window.innerWidth <= 640 ? 24 : 34;
+        presentation.style.bottom = `${Math.max(resultHeight - overlap, 0)}px`;
+    }
+
+    function showResultPresentation(resultData, animate = true) {
+        setResultPresentation(resultData);
+
+        if (animate) {
+            document.body.classList.remove('show-result-mascot');
+        }
+
+        requestAnimationFrame(() => {
+            positionResultPresentation();
+            requestAnimationFrame(() => {
+                document.body.classList.add('show-result-mascot');
+            });
+        });
+    }
+
     function renderQuestion() {
         isCurrentGraded = false;
         const q = quiz.questions[currentIndex];
@@ -76,10 +137,13 @@ document.addEventListener('DOMContentLoaded', () => {
         actionBtn.disabled = !selectedAnswers[q.id];
         actionBtn.textContent = 'Check Answer';
 
-        // Update Progress Bar
-        const pct = Math.round((currentIndex / quiz.questions.length) * 100);
+        // Update Progress Bar: (currentIndex + 1) guarantees Question 10 of 10 hits 100%
+        const pct = Math.round(((currentIndex + 1) / quiz.questions.length) * 100);
         if (progressFill) progressFill.style.width = `${pct}%`;
-        setText('quiz-progress-label', `Question ${currentIndex + 1} of ${quiz.questions.length}`);
+        if (progressLabel) {
+            progressLabel.classList.remove('is-complete');
+            progressLabel.textContent = `Question ${currentIndex + 1} of ${quiz.questions.length}`;
+        }
 
         // Generate Question Body
         let bodyHtml = '';
@@ -308,11 +372,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function finalizeQuiz() {
         sheet.classList.add('is-hidden');
+        if (progressFill) progressFill.style.width = '100%';
+
+        // Upgrade progress counter to glowing completion banner
+        if (progressLabel) {
+            progressLabel.textContent = 'QUIZ 100% COMPLETE';
+            progressLabel.classList.add('is-complete');
+        }
+
+        // Educational, up-to-date assessment copy
         wrap.innerHTML = `
             <div style="text-align: center; padding: 70px 20px;">
                 <div style="font-size: 2.2rem; margin-bottom: 12px;">📝</div>
-                <h2 style="margin: 0; font-size: 1.35rem; color: var(--ink);">Evaluating Learning Path...</h2>
-                <p style="margin: 6px 0 0; color: var(--muted); font-size: 0.9rem;">Compiling answer review and topic anchors.</p>
+                <h2 style="margin: 0; font-size: 1.35rem; color: var(--ink);">Evaluating Assessment...</h2>
+                <p style="margin: 6px 0 0; color: var(--muted); font-size: 0.9rem;">Compiling your answer review.</p>
             </div>
         `;
 
@@ -341,9 +414,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 passBadge.className = `result-badge ${data.passed ? 'passed' : 'retry'}`;
             }
 
+            // Clear loading text before presenting the final result.
+            wrap.innerHTML = '';
+
             if (resultSheet) {
                 resultSheet.classList.add('open');
-                resultSheet.scrollIntoView({ behavior: 'smooth' });
+                showResultPresentation(data, true);
             }
         } catch (err) {
             console.error('Finalize error:', err);
@@ -358,7 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function buildReviewModal() {
         if (!reviewContainer || !serverReviewData || !serverReviewData.review_items) return;
-        const reviewUrlBase = document.getElementById('quiz-exit-link')?.getAttribute('href') || '';
 
         reviewContainer.innerHTML = serverReviewData.review_items.map((item, idx) => {
             const statusClass = ['correct', 'partial', 'incorrect'].includes(item.result_state) 
@@ -571,6 +646,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    window.addEventListener('resize', () => {
+        if (resultSheet?.classList.contains('open')) {
+            positionResultPresentation();
+        }
+    });
+
     // ================= VIEW ROUTING (?view=review vs New Quiz) =================
     let preloadedReview = null;
     const reviewDataEl = document.getElementById('latest-review-data');
@@ -586,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (isReviewMode) {
-        // 1. Hide quiz controls immediately
+        // Hide quiz controls immediately
         actionBtn.classList.add('is-hidden');
         actionBtn.style.display = 'none';
         if (progressFill && progressFill.parentElement) {
@@ -601,7 +682,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 backToScoreBtn.style.display = 'none';
             }
 
-            // Immediately launch Answer Review drawer
+            // Prepare saved-result presentation data without displaying it over the review modal.
+            setResultPresentation(preloadedReview);
+            document.body.classList.remove('show-result-mascot');
+
             buildReviewModal();
             if (reviewModal) {
                 reviewModal.hidden = false;
@@ -609,7 +693,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.classList.add('modal-open');
             }
         } else {
-            // Fallback when review data is missing
             wrap.innerHTML = `
                 <div style="text-align: center; padding: 60px 20px;">
                     <div style="font-size: 2.5rem; margin-bottom: 12px;">📋</div>
@@ -624,6 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
     } else if (quiz.questions && quiz.questions.length > 0) {
+        document.body.classList.remove('show-result-mascot');
         renderQuestion();
     }
 });
