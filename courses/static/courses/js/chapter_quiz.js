@@ -1,285 +1,374 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const dataElement = document.getElementById('quiz-data');
-    if (!dataElement) return;
+    const rawData = document.getElementById('quiz-data');
+    if (!rawData) return;
+    const quiz = JSON.parse(rawData.textContent);
 
-    const quiz = JSON.parse(dataElement.textContent);
-    const questions = quiz.questions || [];
-    const questionWrap = document.getElementById('quiz-question-wrap');
+    const wrap = document.getElementById('quiz-question-wrap');
     const progressFill = document.getElementById('quiz-progress-fill');
     const progressLabel = document.getElementById('quiz-progress-label');
+    const actionBtn = document.getElementById('action-btn');
+
+    // Feedback Sheet Elements
+    const sheet = document.getElementById('quiz-feedback-sheet');
+    const sheetToggle = document.getElementById('feedback-sheet-toggle');
+    const sheetContinue = document.getElementById('sheet-continue-btn');
+
+    // Result & Review Modals
     const resultSheet = document.getElementById('result-sheet');
-    const continueLearningLink = document.getElementById('continue-learning-btn');
-    const reviewDrawer = document.getElementById('review-drawer-modal');
+    const reviewModal = document.getElementById('review-drawer-modal');
     const reviewContainer = document.getElementById('review-items-container');
-    const reviewHeaderScore = document.getElementById('review-header-score');
-    const backToResultsButton = document.getElementById('back-to-results-btn');
-    const reviewContinueLink = document.getElementById('review-continue-btn');
-    const userAnswers = {};
+
+    // Required Elements Guard
+    if (!wrap || !actionBtn || !sheet) {
+        console.error('Quiz initialization aborted: missing essential DOM elements.');
+        return;
+    }
+
+    // Defensive textContent helper to prevent TypeError on null elements
+    function setText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value ?? '';
+    }
+
+    const letters = ['A', 'B', 'C', 'D'];
     let currentIndex = 0;
-    let currentFeedback = null;
+    let selectedAnswers = {}; // Preserves backend schema: { choice_id } | { text } | { items }
+    let gradedHistory = [];
+    let isCurrentGraded = false;
 
     function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
+        const parts = (`; ${document.cookie}`).split(`; ${name}=`);
         return parts.length === 2 ? parts.pop().split(';').shift() : '';
     }
 
-    function addText(parent, className, text) {
-        const element = document.createElement('div');
-        element.className = className;
-        element.textContent = text;
-        parent.appendChild(element);
-        return element;
-    }
-
-    function renderAnswerReview(results) {
-        const review = document.getElementById('answer-review');
-        review.innerHTML = '';
-        addText(review, 'feedback-title', 'Answer Review');
-        reviewContainer.innerHTML = '';
-        reviewHeaderScore.textContent = `Score: ${results.reduce((sum, item) => sum + (item.earned_points || 0), 0)} points`;
-        results.forEach((result, index) => {
-            const questionType = result.question_type || 'assessment';
-            const earnedPoints = result.earned_points || 0;
-            const maximumPoints = result.maximum_points || 0;
-            const card = document.createElement('div');
-            const isFull = earnedPoints === maximumPoints;
-            card.className = `review-item-card ${isFull ? 'is-correct' : (earnedPoints > 0 ? 'is-partial' : '')}`;
-            const header = document.createElement('div');
-            header.className = 'review-item-header';
-            addText(header, '', `${index + 1}. ${questionType.replace('_', ' ')}`);
-            addText(header, '', `${earnedPoints}/${maximumPoints} points`);
-            card.appendChild(header);
-            addText(card, 'review-item-qtext', result.question_text || 'Question');
-            const answerBlock = document.createElement('div');
-            answerBlock.className = 'review-answer-block';
-            if (questionType === 'multiple_choice' || questionType === 'true_false') {
-                addText(answerBlock, '', `Your selection: ${result.submitted_choice_text || 'No answer'}`);
-                if (!result.is_correct) addText(answerBlock, '', `Correct choice: ${result.correct_choice_text || 'Unavailable'}`);
-            } else if (questionType === 'identification') {
-                addText(answerBlock, '', `Your answer: ${result.submitted_answer?.text || 'Blank'}`);
-                if (!result.is_correct) addText(answerBlock, '', `Accepted answer: ${result.canonical_answer || 'Unavailable'}`);
-            } else {
-                addText(answerBlock, '', `Matched: ${(result.matched_items || []).join(', ') || 'None'}`);
-                if (result.missing_items?.length) addText(answerBlock, '', `Missing: ${result.missing_items.join(', ')}`);
-            }
-            card.appendChild(answerBlock);
-            addText(card, 'review-expl', result.explanation || 'Review the lesson for this concept.');
-            review.appendChild(card);
-            reviewContainer.appendChild(card.cloneNode(true));
-        });
-    }
-
-    function updateProgress(complete = false) {
-        const percentage = complete ? 100 : Math.round((currentIndex / questions.length) * 100);
-        progressFill.style.width = `${percentage}%`;
-        progressLabel.textContent = complete
-            ? 'Quiz complete'
-            : `Question ${currentIndex + 1} of ${questions.length}`;
-    }
-
     function renderQuestion() {
-        const question = questions[currentIndex];
-        currentFeedback = null;
-        questionWrap.innerHTML = '';
-        updateProgress();
-
-        const tags = document.createElement('div');
-        tags.className = 'quiz-tag-row';
-        addText(tags, 'quiz-tag', `Question ${currentIndex + 1}`);
-        addText(tags, 'quiz-tag tag-type', {
+        isCurrentGraded = false;
+        const q = quiz.questions[currentIndex];
+        const isTF = q.type === 'true_false';
+        const typeLabels = {
             multiple_choice: 'Multiple Choice',
             true_false: 'True or False',
             identification: 'Identification',
-            enumeration: 'Enumeration',
-        }[question.type] || 'Assessment');
-        questionWrap.appendChild(tags);
-        addText(questionWrap, 'quiz-question-text', question.text);
+            enumeration: 'Enumeration'
+        };
 
-        const answerMount = document.createElement('div');
-        answerMount.className = question.type === 'enumeration' ? 'quiz-typed-answer enumeration-inputs' : 'quiz-typed-answer';
-        questionWrap.appendChild(answerMount);
+        // Reset Feedback Sheet
+        sheet.classList.add('is-hidden');
+        sheet.classList.remove('is-collapsed', 'is-entering', 'is-correct', 'is-partial', 'is-incorrect');
 
-        if (question.type === 'multiple_choice' || question.type === 'true_false') {
-            const choices = document.createElement('div');
-            choices.className = `quiz-choices ${question.type === 'true_false' ? 'tf-layout' : ''}`;
-            question.choices.forEach((choice, index) => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'quiz-option';
-                button.dataset.choiceId = choice.id;
-                const letter = document.createElement('span');
-                letter.className = 'quiz-letter';
-                letter.textContent = question.type === 'true_false'
-                    ? choice.text.trim().charAt(0).toUpperCase()
-                    : ['A', 'B', 'C', 'D'][index] || '?';
-                button.append(letter);
-                const label = document.createElement('span');
-                label.textContent = choice.text;
-                button.append(label);
-                button.addEventListener('click', () => {
-                    choices.querySelectorAll('.quiz-option').forEach(option => option.classList.remove('selected'));
-                    button.classList.add('selected');
-                    userAnswers[question.id] = { choice_id: choice.id };
-                    action.disabled = false;
-                });
-                choices.appendChild(button);
+        // Restore the single action button
+        actionBtn.classList.remove('is-hidden');
+        actionBtn.disabled = !selectedAnswers[q.id];
+        actionBtn.textContent = 'Check Answer';
+
+        // Update Progress Bar
+        const pct = Math.round((currentIndex / quiz.questions.length) * 100);
+        if (progressFill) progressFill.style.width = `${pct}%`;
+        setText('quiz-progress-label', `Question ${currentIndex + 1} of ${quiz.questions.length}`);
+
+        // Generate Question Body without any extra action buttons
+        let bodyHtml = '';
+        if (q.type === 'multiple_choice' || q.type === 'true_false') {
+            const currentPick = selectedAnswers[q.id]?.choice_id;
+            bodyHtml = `
+                <div class="quiz-choices ${isTF ? 'tf-layout' : ''}" id="choices-container">
+                    ${q.choices.map((c, i) => {
+                        let badge = letters[i] || '';
+                        if (isTF) {
+                            badge = c.text.trim().toLowerCase().startsWith('t') ? 'T' : 'F';
+                        }
+                        const isSelected = currentPick === c.id;
+                        return `
+                            <button type="button" class="quiz-option ${isSelected ? 'selected' : ''}" data-choice-id="${c.id}">
+                                <span class="quiz-letter">${badge}</span>
+                                <span>${c.text}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        } else if (q.type === 'identification') {
+            const currentVal = selectedAnswers[q.id]?.text || '';
+            bodyHtml = `
+                <div class="quiz-typed-answer">
+                    <input type="text" class="quiz-text-input" id="id-answer-input" placeholder="Type your answer..." value="${currentVal}" autocomplete="off" autocapitalize="off">
+                </div>
+            `;
+        } else if (q.type === 'enumeration') {
+            const currentItems = selectedAnswers[q.id]?.items || [];
+            const count = q.expected_count || 3;
+            let inputs = '';
+            for (let i = 0; i < count; i++) {
+                inputs += `
+                    <input type="text" class="quiz-text-input enumeration-input" data-index="${i}" placeholder="Item ${i + 1}..." value="${currentItems[i] || ''}" autocomplete="off">
+                `;
+            }
+            bodyHtml = `<div class="enumeration-inputs">${inputs}</div>`;
+        }
+
+        wrap.innerHTML = `
+            <div class="quiz-tag-row">
+                <span class="quiz-tag">Question ${currentIndex + 1}</span>
+                <span class="quiz-tag tag-type">${typeLabels[q.type] || q.type}</span>
+            </div>
+            <h2 class="quiz-question-text">${q.text}</h2>
+            ${bodyHtml}
+        `;
+
+        bindInputEvents(q);
+    }
+
+    function bindInputEvents(q) {
+        // Multiple Choice / True-False
+        wrap.querySelectorAll('.quiz-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (isCurrentGraded) return;
+                const cId = Number(btn.dataset.choiceId);
+                selectedAnswers[q.id] = { choice_id: cId };
+                wrap.querySelectorAll('.quiz-option').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                actionBtn.disabled = false;
             });
-            answerMount.appendChild(choices);
-        } else if (question.type === 'identification') {
-            const input = document.createElement('input');
-            input.className = 'quiz-text-input';
-            input.type = 'text';
-            input.placeholder = 'Type your answer';
-            input.addEventListener('input', () => {
-                userAnswers[question.id] = { text: input.value };
-                action.disabled = !input.value.trim();
+        });
+
+        // Identification
+        const idInput = wrap.querySelector('#id-answer-input');
+        if (idInput) {
+            idInput.addEventListener('input', () => {
+                const val = idInput.value.trim();
+                if (val) {
+                    selectedAnswers[q.id] = { text: val };
+                    actionBtn.disabled = false;
+                } else {
+                    delete selectedAnswers[q.id];
+                    actionBtn.disabled = true;
+                }
             });
-            answerMount.appendChild(input);
-        } else if (question.type === 'enumeration') {
-            const count = Math.max(question.expected_count || 2, 2);
-            const inputs = [];
-            for (let index = 0; index < count; index += 1) {
-                const input = document.createElement('input');
-                input.className = 'quiz-text-input';
-                input.type = 'text';
-                input.placeholder = `Answer ${index + 1}`;
+            idInput.addEventListener('focus', () => {
+                setTimeout(() => idInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 280);
+            });
+        }
+
+        // Enumeration
+        const enumInputs = wrap.querySelectorAll('.enumeration-input');
+        if (enumInputs.length) {
+            enumInputs.forEach(input => {
                 input.addEventListener('input', () => {
-                    userAnswers[question.id] = { items: inputs.map(item => item.value) };
-                    action.disabled = !inputs.some(item => item.value.trim());
+                    const items = Array.from(enumInputs).map(inp => inp.value.trim());
+                    const hasAny = items.some(Boolean);
+                    if (hasAny) {
+                        selectedAnswers[q.id] = { items };
+                        actionBtn.disabled = false;
+                    } else {
+                        delete selectedAnswers[q.id];
+                        actionBtn.disabled = true;
+                    }
                 });
-                inputs.push(input);
-                answerMount.appendChild(input);
-            }
+                input.addEventListener('focus', () => {
+                    setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 280);
+                });
+            });
         }
-
-        const feedbackMount = document.createElement('div');
-        feedbackMount.className = 'quiz-feedback-mount';
-        questionWrap.appendChild(feedbackMount);
-
-        const action = document.createElement('button');
-        action.type = 'button';
-        action.className = 'btn btn-primary btn-chunky quiz-action-btn';
-        action.textContent = 'Check Answer';
-        action.disabled = true;
-        action.addEventListener('click', async () => {
-            if (!currentFeedback) {
-                await checkAnswer(question, action, feedbackMount, answerMount);
-            } else if (currentIndex === questions.length - 1) {
-                await submitQuiz();
-            } else {
-                currentIndex += 1;
-                renderQuestion();
-            }
-        });
-        questionWrap.appendChild(action);
     }
 
-    async function checkAnswer(question, action, feedbackMount, answerMount) {
-        action.disabled = true;
+    async function handleCheckAnswer() {
+        if (isCurrentGraded) return;
+        const q = quiz.questions[currentIndex];
+        const isLast = currentIndex === quiz.questions.length - 1;
+        const answerPayload = selectedAnswers[q.id];
+
+        actionBtn.disabled = true;
+        actionBtn.textContent = 'Verifying...';
+
         try {
-            const response = await fetch(quiz.checkUrl, {
+            const res = await fetch(quiz.checkUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken'),
-                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({
-                    question_id: question.id,
-                    answer: userAnswers[question.id] || {},
-                }),
+                body: JSON.stringify({ question_id: q.id, answer: answerPayload })
             });
-            const feedback = await response.json();
-            if (!response.ok) throw new Error(feedback.error || 'Answer check failed');
-            currentFeedback = feedback;
-            renderFeedback(question, feedback, feedbackMount, answerMount);
-            action.textContent = currentIndex === questions.length - 1 ? 'Complete Quiz' : 'Next Question';
-            action.disabled = false;
-        } catch (error) {
-            feedbackMount.textContent = error.message;
-            action.disabled = false;
-        }
-    }
 
-    function renderFeedback(question, feedback, mount, answerMount) {
-        const box = document.createElement('div');
-        box.className = `quiz-feedback-box ${feedback.is_correct ? 'correct' : 'incorrect'}`;
-        addText(box, 'feedback-eyebrow', feedback.is_correct ? 'Correct' : 'Review This');
-        if (feedback.correct_choice_text) addText(box, 'feedback-title', feedback.correct_choice_text);
-        if (feedback.canonical_answer) addText(box, 'feedback-title', feedback.canonical_answer);
-        if (question.type === 'enumeration') {
-            addText(box, 'feedback-title', `${feedback.earned_points} of ${feedback.maximum_points} identified`);
-            if (feedback.missing_items && feedback.missing_items.length) {
-                addText(box, 'feedback-text', `Missing: ${feedback.missing_items.join(', ')}`);
+            if (!res.ok) throw new Error('Grading check failed');
+            const data = await res.json();
+            isCurrentGraded = true;
+            gradedHistory.push({ question: q, userPick: answerPayload, result: data });
+
+            // Lock in-page options and highlight results
+            if (q.type === 'multiple_choice' || q.type === 'true_false') {
+                wrap.querySelectorAll('.quiz-option').forEach(btn => {
+                    btn.classList.add('locked');
+                    const cId = Number(btn.dataset.choiceId);
+                    if (cId === data.correct_choice_id) btn.classList.add('is-correct');
+                    if (cId === answerPayload.choice_id && !data.is_correct) btn.classList.add('is-incorrect');
+                    if (cId !== data.correct_choice_id && cId !== answerPayload.choice_id) btn.classList.add('is-dimmed');
+                });
+            } else if (q.type === 'identification') {
+                const idInput = wrap.querySelector('#id-answer-input');
+                if (idInput) {
+                    idInput.disabled = true;
+                    idInput.classList.add(data.is_correct ? 'is-correct' : 'is-incorrect');
+                }
+            } else if (q.type === 'enumeration') {
+                wrap.querySelectorAll('.enumeration-input').forEach(inp => inp.disabled = true);
             }
-        }
-        addText(box, 'feedback-text', feedback.explanation || question.explanation || 'Review this concept before continuing.');
-        mount.innerHTML = '';
-        mount.appendChild(box);
 
-        answerMount.querySelectorAll('button, input').forEach(element => {
-            element.disabled = true;
-        });
-        if (question.type === 'multiple_choice' || question.type === 'true_false') {
-            answerMount.querySelectorAll('.quiz-option').forEach(button => {
-                const choiceId = Number(button.dataset.choiceId);
-                if (choiceId === feedback.correct_choice_id) button.classList.add('is-correct');
-                else if (choiceId === userAnswers[question.id]?.choice_id) button.classList.add('is-incorrect');
-                else button.classList.add('is-dimmed');
+            // Hide the Check Answer button with utility class
+            actionBtn.classList.add('is-hidden');
+
+            // Determine Partial vs Full Credit
+            const earned = Number(data.earned_points ?? (data.is_correct ? 1 : 0));
+            const maxPts = Number(data.maximum_points ?? q.max_points ?? 1);
+            const feedbackState = earned === maxPts ? 'is-correct' : (earned > 0 ? 'is-partial' : 'is-incorrect');
+
+            sheet.className = `quiz-feedback-sheet ${feedbackState}`;
+            setText('sheet-status-pill', feedbackState === 'is-correct' ? 'Correct' : (feedbackState === 'is-partial' ? 'Partially Correct' : 'Needs Review'));
+            setText('sheet-points-pill', `${earned} / ${maxPts} Pt${maxPts === 1 ? '' : 's'}`);
+            setText('sheet-title-text', feedbackState === 'is-correct' ? 'Nicely Done!' : (feedbackState === 'is-partial' ? 'Almost There' : 'Concept Review'));
+            setText('sheet-expl-text', data.explanation || '');
+
+            // Extra details for identification & enumeration
+            let extraHtml = '';
+            if (data.canonical_answer) {
+                extraHtml += `<div>Accepted Term: <strong>${data.canonical_answer}</strong></div>`;
+            }
+            if (data.matched_items && data.matched_items.length) {
+                extraHtml += `<div>Matched: <strong>${data.matched_items.join(', ')}</strong></div>`;
+            }
+            if (data.missing_items && data.missing_items.length) {
+                extraHtml += `<div style="color: var(--gold);">Missing: <strong>${data.missing_items.join(', ')}</strong></div>`;
+            }
+            const extraEl = document.getElementById('sheet-extra-wrap');
+            if (extraEl) extraEl.innerHTML = extraHtml;
+
+            if (sheetContinue) {
+                sheetContinue.innerHTML = isLast ? 'Complete Quiz &rarr;' : 'Next Question &rarr;';
+            }
+
+            // Slide up feedback sheet
+            sheet.classList.remove('is-hidden');
+            sheet.classList.add('is-entering');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    sheet.classList.remove('is-entering');
+                });
             });
+
+            if (window.innerWidth > 640) {
+                sheet.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+        } catch (err) {
+            console.error('Answer check error:', err);
+            actionBtn.disabled = false;
+            actionBtn.textContent = 'Check Answer';
         }
     }
 
-    async function submitQuiz() {
-        questionWrap.innerHTML = '<div class="quiz-saving">Saving authoritative results...</div>';
+    actionBtn.addEventListener('click', handleCheckAnswer);
+
+    sheetContinue?.addEventListener('click', () => {
+        if (currentIndex < quiz.questions.length - 1) {
+            currentIndex++;
+            renderQuestion();
+        } else {
+            finalizeQuiz();
+        }
+    });
+
+    sheetToggle?.addEventListener('click', () => {
+        sheet.classList.toggle('is-collapsed');
+    });
+
+    // Touch swipe handling for mobile bottom sheet
+    let touchStartY = null;
+    sheet.addEventListener('touchstart', (e) => {
+        if (!e.target.closest('.feedback-sheet-handle')) return;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    sheet.addEventListener('touchend', (e) => {
+        if (touchStartY === null) return;
+        const diff = e.changedTouches[0].clientY - touchStartY;
+        if (diff > 45) {
+            sheet.classList.add('is-collapsed');
+        } else if (diff < -45) {
+            sheet.classList.remove('is-collapsed');
+        }
+        touchStartY = null;
+    }, { passive: true });
+
+    async function finalizeQuiz() {
+        sheet.classList.add('is-hidden');
+        wrap.innerHTML = `
+            <div style="text-align: center; padding: 70px 20px;">
+                <div style="font-size: 2.2rem; margin-bottom: 8px;">⚡</div>
+                <h2 style="margin: 0; font-size: 1.4rem;">Finalizing Assessment...</h2>
+            </div>
+        `;
+
         try {
-            const response = await fetch(quiz.submitUrl, {
+            const res = await fetch(quiz.submitUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken'),
-                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ answers: userAnswers }),
+                body: JSON.stringify({ answers: selectedAnswers })
             });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Grading failed');
-            document.getElementById('sheet-score').textContent = `${result.score}/${result.total_questions}`;
-            document.getElementById('sheet-percentage').textContent = `${result.percentage}%`;
-            document.getElementById('sheet-xp').textContent = `+${result.xp_earned}`;
-            document.getElementById('sheet-level').textContent = result.new_level;
-            document.getElementById('sheet-streak').textContent = result.new_streak;
-            renderAnswerReview(result.results || []);
-            const nextUrl = result.next_chapter_id
-                ? `/chapters/${result.next_chapter_id}/review/`
-                : continueLearningLink?.href;
-            if (nextUrl) {
-                if (continueLearningLink) continueLearningLink.href = nextUrl;
-                if (reviewContinueLink) reviewContinueLink.href = nextUrl;
-            }
-            updateProgress(true);
-            resultSheet.classList.add('open');
-        } catch (error) {
-            questionWrap.textContent = error.message;
+
+            const data = await res.json();
+            setText('sheet-score', `${data.score}/${data.total_questions}`);
+            setText('sheet-percentage', `${data.percentage}%`);
+            setText('sheet-xp', `+${data.xp_earned}`);
+            setText('sheet-level', data.new_level);
+            setText('sheet-streak', data.new_streak);
+
+            if (resultSheet) resultSheet.classList.add('open');
+        } catch (err) {
+            console.error('Finalize error:', err);
         }
     }
 
     document.getElementById('open-review-btn')?.addEventListener('click', () => {
-        resultSheet.classList.remove('open');
-        reviewDrawer.classList.add('is-active');
-        reviewDrawer.setAttribute('aria-hidden', 'false');
-    });
-    backToResultsButton?.addEventListener('click', () => {
-        reviewDrawer.classList.remove('is-active');
-        reviewDrawer.setAttribute('aria-hidden', 'true');
-        resultSheet.classList.add('open');
-    });
-    document.getElementById('close-review-btn')?.addEventListener('click', () => {
-        reviewDrawer.classList.remove('is-active');
-        reviewDrawer.setAttribute('aria-hidden', 'true');
-        resultSheet.classList.add('open');
+        buildReviewModal();
+        if (reviewModal) reviewModal.classList.add('is-active');
     });
 
-    if (questions.length) renderQuestion();
+    document.getElementById('close-review-btn')?.addEventListener('click', () => {
+        if (reviewModal) reviewModal.classList.remove('is-active');
+    });
+
+    document.getElementById('back-to-results-btn')?.addEventListener('click', () => {
+        if (reviewModal) reviewModal.classList.remove('is-active');
+    });
+
+    function buildReviewModal() {
+        if (!reviewContainer) return;
+        reviewContainer.innerHTML = gradedHistory.map((item, idx) => {
+            const earned = Number(item.result.earned_points ?? (item.result.is_correct ? 1 : 0));
+            const maxPts = Number(item.result.maximum_points ?? item.question.max_points ?? 1);
+            const state = earned === maxPts ? 'is-correct' : (earned > 0 ? 'is-partial' : 'is-incorrect');
+
+            return `
+                <div class="review-item-card ${state}">
+                    <div class="review-item-header">
+                        <span>Question ${idx + 1}</span>
+                        <span>${earned} / ${maxPts} Pt${maxPts === 1 ? '' : 's'}</span>
+                    </div>
+                    <p class="review-item-qtext">${item.question.text}</p>
+                    <div class="review-answer-block">
+                        <div><strong>Feedback:</strong> ${item.result.explanation || 'No additional note.'}</div>
+                        ${item.result.canonical_answer ? `<div><strong>Accepted Answer:</strong> ${item.result.canonical_answer}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Initialize first question
+    renderQuestion();
 });
