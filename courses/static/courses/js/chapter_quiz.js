@@ -71,8 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (percentage === 100) {
             sprite = '/static/courses/images/mascot_result_excellent.png';
             titleText = 'That was excellent!';
-            messageHtml = "You <b>aced</b> every single question! Perfect score — you've completely mastered this chapter.";
-        } else if (percentage >= 90) {
+            messageHtml = "You <b>aced</b> every single question! Perfect score! You've completely mastered this chapter.";
+        } else if (percentage >= 85) {
             sprite = '/static/courses/images/mascot_result_excellent.png';
             titleText = 'That was amazing!';
             messageHtml = 'You barely made any errors! Come <b>review</b> the couple you missed and we are golden.';

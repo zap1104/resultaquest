@@ -564,13 +564,13 @@ def course_edit(request, pk):
 
 
 @login_required
+@require_POST
 def course_delete(request, pk):
     course = get_object_or_404(Course, pk=pk, user=request.user)
-    if request.method == "POST":
-        course.delete()
-        return redirect("courses:course_list")
-    return redirect("courses:course_detail", pk=course.pk)
-
+    title = course.title
+    course.delete()
+    messages.success(request, f'Course "{title}" was permanently deleted.')
+    return redirect(f"{redirect('courses:course_list').url}?tab=archived")
 
 @login_required
 @require_POST
@@ -834,13 +834,16 @@ def submit_quiz(request, pk=None, chapter_id=None):
             result_state = "incorrect"
 
         review_item = {
+            "order": q.order,
             "question_id": q.id,
             "question_type": q.question_type,
             "prompt": q.text,
+            "question_text": q.text,
             "earned_points": float(earned_pts),
             "maximum_points": float(max_pts),
             "result_state": result_state,
             "explanation": q.explanation or feedback.get("explanation", ""),
+            "submitted_answer": ans_payload,
             **feedback,
         }
 
@@ -856,6 +859,7 @@ def submit_quiz(request, pk=None, chapter_id=None):
 
             review_item.update({
                 "submitted_text": sub_choice.text if sub_choice else "No answer provided",
+                "submitted_choice_text": sub_choice.text if sub_choice else "",
                 "correct_text": corr_choice.text if corr_choice else feedback.get("correct_choice_text", ""),
                 "is_correct": result_state == "correct",
             })
@@ -903,8 +907,8 @@ def submit_quiz(request, pk=None, chapter_id=None):
         or 0
     )
 
-    base_xp_potential = 50 if passed else 15
-    xp_delta = max(base_xp_potential - previous_best_xp, 0)
+    attempt_xp = calculate_quiz_xp(percentage)
+    xp_delta = max(attempt_xp - previous_best_xp, 0)
 
     # Persist QuizAttempt with the complete review data snapshot
     QuizAttempt.objects.create(
@@ -912,7 +916,7 @@ def submit_quiz(request, pk=None, chapter_id=None):
         quiz=quiz,
         score=float(total_earned),
         total_questions=int(total_max),
-        xp_earned=base_xp_potential if passed else max(previous_best_xp, base_xp_potential),
+        xp_earned=attempt_xp,
         review_data={
             "score": float(total_earned),
             "maximum_score": float(total_max),
@@ -935,10 +939,12 @@ def submit_quiz(request, pk=None, chapter_id=None):
     return JsonResponse({
         "score": float(total_earned),
         "maximum_score": float(total_max),
+        "total_questions": int(total_max),
         "percentage": percentage,
         "passed": passed,
         "xp_earned": xp_delta,
         "new_level": getattr(profile, "current_level", 1) if profile else 1,
         "new_streak": getattr(profile, "streak_days", 0) if profile else 0,
         "review_items": review_items,
+        "results": review_items,
     })
