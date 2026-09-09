@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import unicodedata
 from decimal import Decimal
@@ -28,7 +29,9 @@ from .models import (
     UserProfile,
 )
 from .schemas import GenerationPreferences
-from .services import generate_course_journey
+from .services import generate_course_journey, SourceBundleError
+
+logger = logging.getLogger(__name__)
 
 QUIZ_PASS_THRESHOLD = 75
 LESSON_COMPLETION_XP = 15
@@ -285,13 +288,49 @@ def course_list(request):
 def course_create(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     eligibility = get_generation_eligibility(profile)
+
     if request.method == "GET":
-        return render(request, "courses/course_form.html", {"eligibility": eligibility, "profile": profile})
+        return render(request, "courses/course_form.html", {
+            "eligibility": eligibility,
+            "profile": profile,
+        })
+
     if request.method == "POST":
         if not eligibility.allowed:
-            return render(request, "courses/course_form.html", {"eligibility": eligibility, "profile": profile}, status=403)
-        content_file = request.FILES.get("content_file")
-        custom_title = request.POST.get("custom_title", "").strip()
+            return render(
+                request,
+                "courses/course_form.html",
+                {"eligibility": eligibility, "profile": profile},
+                status=403,
+            )
+
+        content_files = request.FILES.getlist("content_files")
+        legacy_file = request.FILES.get("content_file")
+        if not content_files and legacy_file:
+            content_files = [legacy_file]
+
+        custom_title = request.POST.get("custom_title", "").strip() or request.POST.get("title", "").strip()
+        study_focus = request.POST.get("study_focus", "").strip()[:100]
+
+        if not content_files:
+            return render(request, "courses/course_form.html", {
+                "eligibility": eligibility,
+                "profile": profile,
+                "generation_failed": True,
+                "generation_error": "Please select at least one study file to generate a course.",
+                "custom_title": custom_title,
+                "study_focus": study_focus,
+            })
+
+        if len(content_files) > 3:
+            return render(request, "courses/course_form.html", {
+                "eligibility": eligibility,
+                "profile": profile,
+                "generation_failed": True,
+                "generation_error": "You can upload a maximum of 3 files per course.",
+                "custom_title": custom_title,
+                "study_focus": study_focus,
+            })
 
         preference_data = {
             "study_goal": request.POST.get("study_goal", "balanced_review"),
@@ -302,22 +341,29 @@ def course_create(request):
             preferences = GenerationPreferences.model_validate(preference_data)
         except Exception:
             return render(request, "courses/course_form.html", {
+                "eligibility": eligibility,
+                "profile": profile,
                 "generation_failed": True,
                 "generation_error": "The selected study settings were invalid.",
-                "previous_filename": content_file.name if content_file else "uploaded file",
+                "custom_title": custom_title,
+                "study_focus": study_focus,
             })
 
         dummy_course = Course(title=custom_title or "Untitled Course", user=request.user)
 
         try:
+            # Gemini generation is executed outside of any open database transaction
             journey_data = generate_course_journey(
                 dummy_course,
-                uploaded_file=content_file,
+                uploaded_files=content_files,
                 study_goal=preferences.study_goal,
                 assessment_formats=preferences.assessment_formats,
+                study_focus=study_focus,
+                plan_name=profile.plan,
             )
             journey_data["generation_profile"] = preferences.model_dump()
 
+            # Transaction is isolated strictly to persistence and credit consumption
             with transaction.atomic():
                 course = _build_journey(
                     request.user,
@@ -328,14 +374,27 @@ def course_create(request):
 
             return redirect("courses:course_detail", pk=course.pk)
 
-        except Exception as error:
-            print("[Course Generation Failed]:", repr(error))
+        except SourceBundleError as err:
+            logger.warning(f"[Source Bundle Validation/Extraction Error]: {err}")
             return render(request, "courses/course_form.html", {
+                "eligibility": eligibility,
+                "profile": profile,
                 "generation_failed": True,
-                "previous_filename": content_file.name if content_file else "uploaded file",
+                "generation_error": str(err),
+                "failed_filename": err.filename,
+                "custom_title": custom_title,
+                "study_focus": study_focus,
             })
-
-    return render(request, "courses/course_form.html", {"eligibility": eligibility, "profile": profile})
+        except Exception as error:
+            logger.error(f"[Course Generation Failed Unexpectedly]: {repr(error)}")
+            return render(request, "courses/course_form.html", {
+                "eligibility": eligibility,
+                "profile": profile,
+                "generation_failed": True,
+                "generation_error": "Course generation encountered an unexpected error. Please try again.",
+                "custom_title": custom_title,
+                "study_focus": study_focus,
+            })
 
 
 @transaction.atomic
@@ -564,13 +623,13 @@ def course_edit(request, pk):
 
 
 @login_required
+@require_POST
 def course_delete(request, pk):
     course = get_object_or_404(Course, pk=pk, user=request.user)
-    if request.method == "POST":
-        course.delete()
-        return redirect("courses:course_list")
-    return redirect("courses:course_detail", pk=course.pk)
-
+    title = course.title
+    course.delete()
+    messages.success(request, f'Course "{title}" was permanently deleted.')
+    return redirect(f"{redirect('courses:course_list').url}?tab=archived")
 
 @login_required
 @require_POST
@@ -834,13 +893,16 @@ def submit_quiz(request, pk=None, chapter_id=None):
             result_state = "incorrect"
 
         review_item = {
+            "order": q.order,
             "question_id": q.id,
             "question_type": q.question_type,
             "prompt": q.text,
+            "question_text": q.text,
             "earned_points": float(earned_pts),
             "maximum_points": float(max_pts),
             "result_state": result_state,
             "explanation": q.explanation or feedback.get("explanation", ""),
+            "submitted_answer": ans_payload,
             **feedback,
         }
 
@@ -856,6 +918,7 @@ def submit_quiz(request, pk=None, chapter_id=None):
 
             review_item.update({
                 "submitted_text": sub_choice.text if sub_choice else "No answer provided",
+                "submitted_choice_text": sub_choice.text if sub_choice else "",
                 "correct_text": corr_choice.text if corr_choice else feedback.get("correct_choice_text", ""),
                 "is_correct": result_state == "correct",
             })
@@ -903,8 +966,8 @@ def submit_quiz(request, pk=None, chapter_id=None):
         or 0
     )
 
-    base_xp_potential = 50 if passed else 15
-    xp_delta = max(base_xp_potential - previous_best_xp, 0)
+    attempt_xp = calculate_quiz_xp(percentage)
+    xp_delta = max(attempt_xp - previous_best_xp, 0)
 
     # Persist QuizAttempt with the complete review data snapshot
     QuizAttempt.objects.create(
@@ -912,7 +975,7 @@ def submit_quiz(request, pk=None, chapter_id=None):
         quiz=quiz,
         score=float(total_earned),
         total_questions=int(total_max),
-        xp_earned=base_xp_potential if passed else max(previous_best_xp, base_xp_potential),
+        xp_earned=attempt_xp,
         review_data={
             "score": float(total_earned),
             "maximum_score": float(total_max),
@@ -935,10 +998,12 @@ def submit_quiz(request, pk=None, chapter_id=None):
     return JsonResponse({
         "score": float(total_earned),
         "maximum_score": float(total_max),
+        "total_questions": int(total_max),
         "percentage": percentage,
         "passed": passed,
         "xp_earned": xp_delta,
         "new_level": getattr(profile, "current_level", 1) if profile else 1,
         "new_streak": getattr(profile, "streak_days", 0) if profile else 0,
         "review_items": review_items,
+        "results": review_items,
     })

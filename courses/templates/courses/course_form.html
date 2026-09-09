@@ -6,7 +6,7 @@
 
 {% block content %}
 <style>
-    /* 1. VIEWPORT & RESET */
+    /* 1. VIEWPORT & BALANCED CANVAS RESET */
     html, body {
         overflow-x: hidden;
     }
@@ -17,143 +17,194 @@
 
     .forge-page-wrap,
     .page.forge-page-wrap {
-        max-width: 100% !important;
         width: 100% !important;
+        max-width: none !important;
+        min-height: calc(100dvh - var(--topbar-height));
         padding: 0 !important;
         margin: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         overflow-x: clip;
+        position: relative;
     }
 
-    /* 2. OUTER STAGE: Centers vertically on desktop with balanced margins */
+    /* 2. THE STAGE: Clean relative viewport anchor */
     .forge-stage {
         position: relative;
+        width: 100%;
+        max-width: 1480px;
+        margin: 0 auto;
+        padding: 24px 20px;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transform: translateY(-2dvh);
+    }
+
+    /* 3. WORKBENCH HUB: The purely centered two-pane focal point */
+    .forge-center-hub {
+        position: relative;
+        width: min(1280px, calc(100% - 48px));
+        max-width: 1280px;
+        margin-inline: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        z-index: 2;
+    }
+
+    /* 4. DECORATIVE MASCOT FLANK: Fixed to the viewport edge */
+    .forge-mascot-flank {
+        display: none;
+    }
+
+    @media (min-width: 1440px) {
+    .forge-mascot-flank {
+        position: fixed;
+        left: -35px; /* Pushes the container further left/partially off-screen */
+        bottom: 40px; /* Anchors feet closer to the bottom edge */
+        z-index: 1;
+        display: block;
+        width: clamp(350px, 30vw, 450px); /* Increases width and size scale */
+        overflow: visible; /* Prevents clipping when scaled */
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .forge-mascot-img {
+        width: 100%;
+        height: auto;
+        max-height: 100vh; /* Enlarges height to occupy more vertical space */
+        display: block;
+        object-fit: contain;
+        transform: translateX(-20px); /* Extra nudge to tuck the elbow/side toward the edge */
+        filter: 
+            drop-shadow(0 0 12px rgba(0, 194, 168, 0.34))
+            drop-shadow(0 16px 32px rgba(0, 0, 0, 0.48));
+    }
+}
+
+    /* Scaling for ultra-wide displays */
+    @media (min-width: 1720px) {
+        .forge-mascot-flank {
+            width: clamp(260px, 16vw, 320px);
+        }
+    }
+
+    /* Safeguards: Hide when viewport width or height would cause overlap */
+    @media (max-width: 1439px), (max-height: 720px) {
+        .forge-mascot-flank {
+            display: none !important;
+        }
+
+        .forge-stage {
+            transform: none !important;
+            padding-top: 16px;
+            padding-bottom: 24px;
+        }
+    }
+
+    /* 5. TOP HERO ROW */
+    .forge-hero-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
         width: 100%;
         box-sizing: border-box;
     }
 
-    @media (min-width: 1121px) {
-        .forge-stage {
-            min-height: calc(100dvh - var(--topbar-height));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px 32px;
+    @media (min-width: 900px) {
+        .forge-hero-row {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 22px;
+            align-items: stretch;
         }
     }
 
-    /* 3. EXPANDED FORM HUB (720px max width fills screen comfortably) */
-    .forge-center-hub {
-        position: relative;
-        width: 100%;
-        max-width: 720px;
-        margin: 0 auto;
+    .forge-intro-col {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-    }
-
-    /* 4. TALL DESKTOP MASCOT (Spans from Plan Card level to the Generate button) */
-    @media (min-width: 1121px) {
-        .forge-mascot-flank {
-            position: absolute;
-            right: calc(100% + 24px);
-            top: 80px; /* Aligned with the top edge of the Plan card */
-            bottom: 0px; /* Aligned with the base of the Generate button */
-            width: clamp(420px, 30vw, 520px);
-            height: auto;
-            display: flex;
-            align-items: flex-end;
-            justify-content: flex-end;
-            user-select: none;
-            pointer-events: none;
-            z-index: 2;
-        }
-
-        .forge-mascot-img {
-            width: 100%;
-            height: 100%;
-            max-height: none;
-            object-fit: contain;
-            object-position: right bottom;
-            display: block;
-            user-select: none;
-            pointer-events: none;
-            filter: 
-                drop-shadow(0 0 10px rgba(0, 194, 168, 0.45))
-                drop-shadow(0 0 24px rgba(0, 194, 168, 0.25))
-                drop-shadow(0 0 44px rgba(108, 92, 231, 0.2))
-                drop-shadow(0 14px 28px rgba(0, 0, 0, 0.5));
-        }
-    }
-
-    @media (max-width: 1120px) {
-        .forge-mascot-flank {
-            display: none !important;
-        }
-    }
-
-    /* 5. HEADER GROUP */
-    .forge-header-group {
+        justify-content: center;
         text-align: left;
+        gap: 4px;
+    }
+
+    .forge-intro-col .section-tag {
+        align-self: flex-start;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
         margin-bottom: 2px;
     }
 
-    .forge-header-group .hero-greeting {
-        margin: 4px 0 2px;
-        font-size: 1.75rem;
+    .forge-intro-col .hero-greeting {
+        margin: 0;
+        font-size: 1.65rem;
         font-weight: 900;
         color: var(--ink);
+        line-height: 1.2;
     }
 
-    .forge-header-group .subtitle {
+    .forge-intro-col .subtitle {
         margin: 0;
         color: var(--muted);
         font-size: 0.88rem;
+        line-height: 1.4;
     }
 
-    /* 6. STRUCTURED QUOTA CARD */
+    /* 6. COMPACT CURRENT PLAN CARD */
     .quota-status-card {
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        padding: 14px 18px;
+        gap: 8px;
+        padding: 12px 16px;
         border: 1px solid rgba(0, 194, 168, 0.28);
-        border-left: 4px solid var(--accent);
+        border-left: 3px solid var(--accent);
         border-radius: 14px;
         background: linear-gradient(135deg, rgba(0, 194, 168, 0.08), rgba(108, 92, 231, 0.05));
+        box-sizing: border-box;
     }
 
     .quota-status-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 10px;
+    }
+
+    .quota-plan-meta {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
     }
 
     .quota-eyebrow {
-        display: block;
-        margin-bottom: 2px;
         color: var(--muted);
         font-size: 0.68rem;
         font-weight: 800;
         letter-spacing: 0.05em;
         text-transform: uppercase;
+        white-space: nowrap;
     }
 
     .quota-plan-name {
         color: var(--ink);
-        font-size: 1.05rem;
-        font-weight: 900;
+        font-size: 0.96rem;
+        font-weight: 800;
+        white-space: nowrap;
     }
 
     .quota-ready-badge {
         flex-shrink: 0;
-        padding: 5px 14px;
+        padding: 4px 10px;
         border: 1px solid rgba(0, 194, 168, 0.35);
         border-radius: 999px;
         background: rgba(0, 194, 168, 0.14);
         color: var(--accent);
-        font-size: 0.74rem;
+        font-size: 0.72rem;
         font-weight: 800;
         letter-spacing: 0.02em;
         white-space: nowrap;
@@ -165,40 +216,99 @@
         color: var(--danger);
     }
 
-    .quota-stat-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
+    .quota-stat-inline-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
     }
 
-    .quota-stat {
+    .quota-stat-pill {
+        flex: 1;
         min-width: 0;
-        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 5px 8px;
         border: 1px solid var(--border);
-        border-radius: 10px;
+        border-radius: 8px;
         background: rgba(5, 10, 22, 0.35);
-        text-align: center;
+        font-size: 0.78rem;
+        white-space: nowrap;
     }
 
-    .quota-stat span {
-        display: block;
+    .quota-stat-pill .stat-label {
         color: var(--muted);
-        font-size: 0.70rem;
+        font-size: 0.72rem;
     }
 
-    .quota-stat strong {
-        display: block;
-        margin-top: 2px;
+    .quota-stat-pill strong {
         color: var(--ink);
-        font-size: 0.96rem;
+        font-size: 0.84rem;
+        font-weight: 800;
     }
 
-    /* 7. DROP ZONE */
-    .drop-zone {
-        padding: 24px 20px !important;
-        border: 2px dashed var(--border);
+    /* 7. TWO-PANE FORGE GRID (Scaled to match widened hero row) */
+    .forge-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        width: 100%;
+        box-sizing: border-box;
+        align-items: start;
+    }
+
+    @media (min-width: 900px) {
+        .forge-grid {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 22px;
+        }
+    }
+
+    .forge-pane {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
         background: var(--surface);
-        border-radius: 16px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 24px 26px; /* Substantially larger breathing room */
+        box-sizing: border-box;
+    }
+
+    .pane-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .pane-title {
+        font-size: 1.18rem;
+        font-weight: 800;
+        color: var(--ink);
+        margin: 0;
+    }
+
+    .pane-badge {
+        font-size: 0.80rem;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: rgba(108, 92, 231, 0.1);
+        color: var(--primary);
+        border: 1px solid rgba(108, 92, 231, 0.25);
+    }
+
+    /* 8. DROP ZONE: Prominent and spacious */
+    .drop-zone {
+        padding: 34px 20px;
+        border: 2px dashed var(--border);
+        background: var(--bg);
+        border-radius: 14px;
         text-align: center;
         transition: all 0.15s ease;
         cursor: pointer;
@@ -206,36 +316,48 @@
 
     .drop-zone:hover, .drop-zone.dragover {
         border-color: var(--primary);
-        background: rgba(108, 92, 231, 0.03);
+        background: rgba(108, 92, 231, 0.04);
     }
 
-    .drop-zone.has-file {
-        border: 2px solid var(--accent);
-        background: rgba(0, 194, 168, 0.03);
-        padding: 16px 20px !important;
+    .drop-zone.compact {
+        padding: 14px 16px;
+        border-style: dashed;
+        background: rgba(108, 92, 231, 0.02);
+    }
+
+    .drop-zone.is-full {
+        opacity: 0.6;
+        cursor: not-allowed;
+        border-style: solid;
     }
 
     .upload-icon-wrap {
-        width: 42px;
-        height: 42px;
+        width: 40px;
+        height: 40px;
         margin: 0 auto 8px;
         border-radius: 50%;
-        background: var(--bg);
+        background: var(--surface);
         display: grid;
         place-items: center;
-        font-size: 1.3rem;
+        font-size: 1.25rem;
     }
 
     .drop-title {
         margin: 0 0 4px;
-        font-size: 1.05rem;
+        font-size: 0.98rem;
         font-weight: 800;
         color: var(--ink);
     }
 
     .drop-subtitle {
-        margin: 0;
-        font-size: 0.82rem;
+        margin: 0 0 4px;
+        font-size: 0.84rem;
+        color: var(--muted);
+    }
+
+    .drop-formats {
+        display: block;
+        font-size: 0.76rem;
         color: var(--muted);
     }
 
@@ -248,67 +370,256 @@
 
     .hidden-file-input { display: none; }
 
-    .file-preview-card {
+    /* 9. STAGED QUEUE */
+    .staged-file-queue {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .staged-file-card {
+        position: relative;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        gap: 8px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 8px 10px;
+        transition: border-color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+        cursor: grab;
+        user-select: none;
+    }
+
+    .staged-file-card:hover {
+        border-color: rgba(108, 92, 231, 0.4);
+    }
+
+    .staged-file-card.is-dragging {
+        opacity: 0.35;
+        border: 1.5px dashed var(--primary);
+        cursor: grabbing;
+    }
+
+    .staged-file-card.drop-target-above {
+        border-top: 2.5px solid var(--accent) !important;
+    }
+
+    .staged-file-card.drop-target-below {
+        border-bottom: 2.5px solid var(--accent) !important;
+    }
+
+    .drag-handle {
+        color: var(--muted);
+        font-size: 1.15rem;
+        line-height: 1;
+        cursor: grab;
+        padding: 2px 2px 2px 0;
+        letter-spacing: -2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+        transition: color 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .staged-file-card:hover .drag-handle {
+        color: var(--ink);
+    }
+
+    .drag-handle:active {
+        cursor: grabbing;
+    }
+
+    .file-seq-anchor {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 8px 14px;
-        margin-top: 10px;
-    }
-
-    .file-details {
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 800;
         display: flex;
         align-items: center;
-        gap: 10px;
-        overflow: hidden;
+        justify-content: center;
+        flex-shrink: 0;
     }
 
-    .file-name {
-        font-size: 0.88rem;
+    .format-chip {
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        padding: 2px 6px;
+        border-radius: 5px;
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+    .format-chip.pdf { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .format-chip.docx { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .format-chip.pptx { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .format-chip.txt { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+
+    .file-meta-col {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .file-meta-name {
+        font-size: 0.84rem;
         font-weight: 700;
         color: var(--ink);
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
     }
 
-    .file-size {
-        font-size: 0.76rem;
+    .file-meta-size {
+        font-size: 0.70rem;
         color: var(--muted);
     }
 
-    .remove-btn {
-        background: transparent;
-        border: none;
-        color: var(--danger);
+    .file-controls {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        flex-shrink: 0;
+    }
+
+    /* On fine pointer (desktop), hide the stepper arrows by default unless focused for keyboard accessibility */
+    @media (hover: hover) and (pointer: fine) {
+        .btn-stepper:not(:focus-visible) {
+            display: none !important;
+        }
+    }
+
+    .btn-stepper {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--ink);
+        font-size: 0.76rem;
+        font-weight: 700;
         cursor: pointer;
-        font-weight: 800;
-        padding: 2px 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+        padding: 0;
+    }
+    .btn-stepper:hover:not(:disabled) {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: rgba(108, 92, 231, 0.06);
+    }
+    .btn-stepper:disabled {
+        opacity: 0.25;
+        cursor: not-allowed;
+    }
+
+    .btn-remove-source {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--muted);
+        font-size: 0.88rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+        padding: 0;
+    }
+    .btn-remove-source:hover {
+        color: var(--danger);
+        background: rgba(239, 68, 68, 0.12);
+        border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .bundle-meter {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .meter-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.74rem;
+        color: var(--muted);
+    }
+    .meter-info strong {
+        color: var(--ink);
+    }
+
+    .meter-bar {
+        width: 100%;
+        height: 6px;
+        background: var(--surface);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .meter-fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 999px;
+        transition: width 0.2s ease;
+    }
+    .meter-fill.warning {
+        background: var(--danger);
+    }
+
+    .queue-helper-note {
+        font-size: 0.74rem;
+        color: var(--muted);
+        line-height: 1.4;
+        margin: 0;
+    }
+
+    .char-counter {
+        font-size: 0.70rem;
+        font-weight: 700;
+        color: var(--muted);
+        background: var(--bg);
+        padding: 2px 6px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
     }
 
     /* 8. CONFIGURATION INPUTS & CARDS */
     .forge-config-group {
-        margin-top: 4px;
+        margin-top: 2px;
         text-align: left;
     }
 
     .forge-label {
         display: block;
-        font-size: 0.74rem;
+        font-size: 0.72rem;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: var(--muted);
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
 
     .forge-input {
         width: 100%;
-        padding: 10px 14px;
-        border-radius: 12px;
+        padding: 10px 14px; /* Roomier touch/type area */
+        border-radius: 10px;
         border: 1px solid var(--border);
         background: var(--surface);
         color: var(--ink);
@@ -325,15 +636,15 @@
     .option-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        gap: 6px;
     }
 
     .option-card {
         position: relative;
         border: 1.5px solid var(--border);
-        border-radius: 12px;
+        border-radius: 10px;
         background: var(--surface);
-        padding: 10px 12px;
+        padding: 10px 12px; /* Gives the study mode pills more presence */
         cursor: pointer;
         display: flex;
         flex-direction: column;
@@ -350,49 +661,49 @@
     }
 
     .option-title {
-        font-size: 0.84rem;
+        font-size: 0.80rem;
         font-weight: 800;
         color: var(--ink);
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
     }
 
     .option-desc {
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         color: var(--muted);
-        line-height: 1.35;
+        line-height: 1.25;
     }
 
     .option-helper {
-        margin: 0 0 6px;
+        margin: 0 0 4px;
         color: var(--muted);
-        font-size: 0.78rem;
+        font-size: 0.74rem;
     }
 
     .planned-assessment {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
         align-items: center;
-        margin-top: 8px;
+        margin-top: 4px;
         color: var(--muted);
-        font-size: 0.76rem;
+        font-size: 0.72rem;
     }
 
     .planned-assessment strong { color: var(--ink); }
     .planned-assessment span {
-        padding: 3px 8px;
+        padding: 2px 6px;
         border: 1px solid var(--border);
         border-radius: 999px;
         background: var(--surface);
     }
 
     .forge-btn {
-        margin-top: 8px !important;
+        margin-top: 6px !important;
         padding: 12px 18px;
         min-height: 48px;
-        font-size: 1rem;
+        font-size: 1.05rem;
     }
 
     /* 9. MODAL LOADER */
@@ -468,183 +779,246 @@
         100% { left: 100%; }
     }
 
-    /* 10. MOBILE VIEWPORT (<= 640px) */
+    /* 10. RESPONSIVE VIEWPORT ADJUSTMENTS */
+    @media (max-width: 859px) {
+        .forge-page-wrap,
+        .page.forge-page-wrap {
+            min-height: auto !important;
+            justify-content: flex-start !important;
+            padding: 16px 0 32px !important;
+        }
+
+        .forge-stage {
+            transform: none !important;
+            min-height: auto !important;
+            padding: 12px 14px 32px !important;
+        }
+
+        .forge-hero-row {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .forge-intro-col {
+            text-align: center;
+            align-items: center;
+        }
+
+        .forge-intro-col .section-tag {
+            align-self: center;
+        }
+    }
+
     @media (max-width: 640px) {
         .forge-stage {
-            padding: 16px 14px 36px !important;
+            padding: 14px 12px 32px !important;
         }
 
-        .forge-header-group {
-            text-align: center;
-        }
-
-        .forge-header-group .hero-greeting {
-            font-size: 1.4rem;
+        .forge-intro-col .hero-greeting {
+            font-size: 1.35rem;
         }
 
         .forge-input {
             font-size: 16px !important;
-            min-height: 48px;
+            min-height: 44px;
         }
 
         .option-grid {
             grid-template-columns: 1fr;
-            gap: 8px;
+            gap: 6px;
         }
 
         .option-card {
-            min-height: 52px;
-            padding: 12px 14px;
+            min-height: 46px;
+            padding: 10px 12px;
         }
 
         .forge-btn {
-            min-height: 52px;
+            min-height: 48px;
         }
     }
 </style>
 
 <div class="forge-stage">
     <main class="forge-center-hub">
-        <!-- Desktop Mascot Anchor -->
+        <!-- Desktop Mascot Anchor (Decorative flank outside document flow) -->
         <aside class="forge-mascot-flank" aria-hidden="true">
-            <img src="{% static 'courses/images/mascot_point.png' %}" 
-                 alt="StudyQuest Mascot" 
+            <img src="{% static 'courses/images/mascot_course_creation_flank.png' %}" 
+                 alt="" 
                  class="forge-mascot-img">
         </aside>
 
-        <div class="forge-header-group">
-            <span class="section-tag">⚡ STUDYQUEST</span>
-            <h1 class="hero-greeting">Create a New Course</h1>
-            <p class="subtitle">Upload your syllabus or lecture notes and let AI build a tailored study guide.</p>
+        <!-- Consolidated Hero Row: Left Intro & Right Current Plan -->
+        <div class="forge-hero-row">
+            <!-- Left: Heading and one-line description -->
+            <div class="forge-intro-col">
+                <span class="section-tag">⚡ STUDYQUEST</span>
+                <h1 class="hero-greeting">Create a New Course</h1>
+                <p class="subtitle">Upload up to three study files and generate a structured course.</p>
+            </div>
+
+            <!-- Right: Current Plan compact card -->
+            {% if eligibility %}
+                <section class="quota-status-card" aria-label="Current Plan Status">
+                    <div class="quota-status-header">
+                        <div class="quota-plan-meta">
+                            <span class="quota-eyebrow">Plan</span>
+                            <strong class="quota-plan-name">StudyQuest {{ profile.plan|default:"Free"|title }}</strong>
+                        </div>
+
+                        {% if eligibility.allowed %}
+                            <span class="quota-ready-badge">⚡ 1 Available</span>
+                        {% elif eligibility.reason == 'active_course_limit' %}
+                            <span class="quota-ready-badge locked">5/5 Active Limit</span>
+                        {% else %}
+                            <span class="quota-ready-badge locked">Cooldown: {{ eligibility.available_at|date:"M j, g:i A" }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="quota-stat-inline-row">
+                        <div class="quota-stat-pill" title="Weekly Generations">
+                            <span class="stat-label">Weekly:</span>
+                            <strong>{{ eligibility.weekly_used|default:"0" }}/{{ eligibility.weekly_limit|default:"1" }}</strong>
+                        </div>
+                        <div class="quota-stat-pill" title="Active Courses">
+                            <span class="stat-label">Active:</span>
+                            <strong>{{ eligibility.active_count }}/{{ eligibility.active_limit }}</strong>
+                        </div>
+                        <div class="quota-stat-pill" title="Bonus Credits">
+                            <span class="stat-label">Bonus:</span>
+                            <strong>{{ profile.bonus_course_credits|default:0 }}/{{ eligibility.bonus_limit|default:"1" }}</strong>
+                        </div>
+                    </div>
+                </section>
+            {% endif %}
         </div>
-
-        {% if eligibility %}
-            <!-- Structured Quota Card with Integrated Pill -->
-            <section class="quota-status-card">
-                <div class="quota-status-header">
-                    <div>
-                        <span class="quota-eyebrow">Current Plan</span>
-                        <strong class="quota-plan-name">StudyQuest {{ profile.plan|default:"Free"|title }}</strong>
-                    </div>
-
-                    {% if eligibility.allowed %}
-                        <span class="quota-ready-badge">⚡ 1 Generation Available</span>
-                    {% elif eligibility.reason == 'active_course_limit' %}
-                        <span class="quota-ready-badge locked">5/5 Active Limit Reached</span>
-                    {% else %}
-                        <span class="quota-ready-badge locked">Cooldown until {{ eligibility.available_at|date:"M j, g:i A" }}</span>
-                    {% endif %}
-                </div>
-
-                <div class="quota-stat-grid">
-                    <div class="quota-stat">
-                        <span>Weekly usage</span>
-                        <strong>{{ eligibility.weekly_used|default:"0" }}/{{ eligibility.weekly_limit|default:"1" }}</strong>
-                    </div>
-                    <div class="quota-stat">
-                        <span>Active courses</span>
-                        <strong>{{ eligibility.active_count }}/{{ eligibility.active_limit }}</strong>
-                    </div>
-                    <div class="quota-stat">
-                        <span>Bonus credits</span>
-                        <strong>{{ profile.bonus_course_credits|default:0 }}/{{ eligibility.bonus_limit|default:"1" }}</strong>
-                    </div>
-                </div>
-            </section>
-        {% endif %}
 
         {% if generation_failed %}
             <div class="generation-alert" role="alert" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);">
                 <div style="font-size: 1.4rem;">⚠️</div>
                 <div style="flex: 1;">
                     <strong style="color: var(--danger); font-size: 0.92rem;">Generation Interrupted</strong>
-                    <p style="margin: 0; font-size: 0.84rem; color: var(--muted);">Could not synthesize curriculum from <em>{{ previous_filename }}</em>.</p>
+                    <p style="margin: 0; font-size: 0.84rem; color: var(--muted);">{{ generation_error|default:"Could not synthesize curriculum." }}</p>
+                    {% if failed_filename %}
+                        <p style="margin: 2px 0 0; font-size: 0.78rem; color: var(--danger);">Problem file: <strong>{{ failed_filename }}</strong></p>
+                    {% endif %}
                 </div>
-                <button type="button" class="btn btn-primary btn-sm" id="retry-picker-btn">Retry</button>
             </div>
         {% endif %}
 
         <form method="post" enctype="multipart/form-data" class="forge-form" id="course-form">
             {% csrf_token %}
 
-            <!-- Drop Zone -->
-            <div class="drop-zone" id="drop-zone">
-                <div id="drop-empty-state">
-                    <div class="upload-icon-wrap">📄</div>
-                    <h2 class="drop-title">Drag & Drop Study Materials</h2>
-                    <p class="drop-subtitle">or <label for="file-upload" class="browse-link">Browse Files</label> (.pdf, .docx, .txt)</p>
-                </div>
-
-                <div id="drop-selected-state" class="hidden">
-                    <div class="upload-icon-wrap" style="background: rgba(0, 194, 168, 0.15); color: var(--accent);">✓</div>
-                    <h2 class="drop-title" style="color: var(--accent);">Material Ready</h2>
-                    <div class="file-preview-card">
-                        <div class="file-details">
-                            <span>📝</span>
-                            <span class="file-name" id="file-name">filename.pdf</span>
-                            <span class="file-size" id="file-size">1.8 MB</span>
-                        </div>
-                        <button type="button" class="remove-btn" id="remove-file" title="Remove file">✕</button>
+            <div class="forge-grid">
+                <!-- LEFT PANE: Study Materials -->
+                <section class="forge-pane study-materials-pane">
+                    <div class="pane-header">
+                        <h2 class="pane-title">Study Materials</h2>
+                        <span class="pane-badge" id="bundle-count-badge">0 / 3 Files</span>
                     </div>
-                </div>
-                <input type="file" id="file-upload" name="content_file" class="hidden-file-input" accept=".pdf,.docx,.txt" required>
-            </div>
 
-            <!-- Course Name -->
-            <div class="forge-config-group">
-                <label class="forge-label" for="custom-title">Course Name (Optional)</label>
-                <input type="text" id="custom-title" name="custom_title" class="forge-input" placeholder="e.g. System Integration & Architecture (Leave blank for auto-title)">
-            </div>
+                    <!-- Drop Zone Ribbon -->
+                    <div class="drop-zone" id="drop-zone">
+                        <div id="drop-empty-state">
+                            <div class="upload-icon-wrap">📄</div>
+                            <h3 class="drop-title" id="drop-title-text">Drop up to 3 study files here</h3>
+                            <p class="drop-subtitle">or <label for="file-upload" class="browse-link">Browse Files</label></p>
+                            <span class="drop-formats">Supports PDF, DOCX, PPTX, TXT (Max 10 MB each, 20 MB total)</span>
+                        </div>
+                        <input type="file" id="file-upload" name="content_files" class="hidden-file-input" accept=".pdf,.docx,.pptx,.txt" multiple>
+                    </div>
 
-            <!-- Study Mode -->
-            <div class="forge-config-group">
-                <label class="forge-label">Study Mode</label>
-                <div class="option-grid">
-                    <label class="option-card selected" data-type="radio">
-                        <input type="radio" name="study_goal" value="quick_cram" checked>
-                        <span class="option-title">⚡ High-Yield Cram</span>
-                        <span class="option-desc">Definitions, key terms, analogies, and quick exam cues.</span>
-                    </label>
-                    <label class="option-card" data-type="radio">
-                        <input type="radio" name="study_goal" value="balanced_review">
-                        <span class="option-title">⚖️ Balanced Review</span>
-                        <span class="option-desc">Clear definitions, logical flow, and essential takeaways.</span>
-                    </label>
-                    <label class="option-card" data-type="radio">
-                        <input type="radio" name="study_goal" value="deep_learning">
-                        <span class="option-title">📚 Deep Learning</span>
-                        <span class="option-desc">Comprehensive conceptual breakdowns and trade-offs.</span>
-                    </label>
-                </div>
-            </div>
+                    <!-- Staged File Queue -->
+                    <div class="staged-file-queue" id="staged-file-queue" aria-live="polite"></div>
 
-            <!-- Practice Assessment Formats -->
-            <div class="forge-config-group">
-                <label class="forge-label">Practice Assessment Formats</label>
-                <p class="option-helper">Select one or more formats. True or False questions are included automatically.</p>
-                <div class="option-grid">
-                    <label class="option-card selected" data-type="checkbox">
-                        <input type="checkbox" name="assessment_focus" value="multiple_choice" checked>
-                        <span class="option-title">Multiple Choice</span>
-                        <span class="option-desc">Contrasting terms and plausible misconceptions.</span>
-                    </label>
-                    <label class="option-card" data-type="checkbox">
-                        <input type="checkbox" name="assessment_focus" value="identification">
-                        <span class="option-title">Identification</span>
-                        <span class="option-desc">Direct definition-to-term recognition cues.</span>
-                    </label>
-                    <label class="option-card" data-type="checkbox">
-                        <input type="checkbox" name="assessment_focus" value="enumeration">
-                        <span class="option-title">Enumeration</span>
-                        <span class="option-desc">Categorized lists, phases, and components.</span>
-                    </label>
-                </div>
-                <div class="planned-assessment" id="planned-assessment" aria-live="polite"></div>
-            </div>
+                    <!-- Combined Upload Meter -->
+                    <div class="bundle-meter" id="bundle-meter">
+                        <div class="meter-info">
+                            <span>Combined upload size:</span>
+                            <strong id="bundle-total-size">0.0 MB / 20 MB</strong>
+                        </div>
+                        <div class="meter-bar">
+                            <div class="meter-fill" id="meter-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
 
-            <button type="submit" class="btn btn-primary btn-chunky btn-block forge-btn" id="forge-submit-btn" {% if eligibility and not eligibility.allowed %}disabled{% endif %}>
-                Generate Learning Path &rarr;
-            </button>
+                    <p class="queue-helper-note">
+                        ℹ️ <strong>Order sequence:</strong> Drag files into your preferred study order. Related topics may be combined.
+                    </p>
+                </section>
+
+                <!-- RIGHT PANE: Course Setup -->
+                <section class="forge-pane course-setup-pane">
+                    <div class="pane-header">
+                        <h2 class="pane-title">Course Setup</h2>
+                    </div>
+
+                    <!-- Course Name -->
+                    <div class="forge-config-group">
+                        <label class="forge-label" for="custom-title">Course Name (Optional)</label>
+                        <input type="text" id="custom-title" name="custom_title" class="forge-input" value="{{ custom_title|default:'' }}" placeholder="e.g. System Integration & Architecture (Leave blank for auto-title)">
+                    </div>
+
+                    <!-- Study Focus -->
+                    <div class="forge-config-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label class="forge-label" for="study-focus" style="margin-bottom: 0;">Study Focus (Optional)</label>
+                            <span class="char-counter" id="focus-char-counter">0 / 100</span>
+                        </div>
+                        <input type="text" id="study-focus" name="study_focus" maxlength="100" class="forge-input" value="{{ study_focus|default:'' }}" placeholder="e.g. Focus on formulas; explain like I'm 11; emphasize prelim topics">
+                    </div>
+
+                    <!-- Study Mode -->
+                    <div class="forge-config-group">
+                        <label class="forge-label">Study Mode</label>
+                        <div class="option-grid">
+                            <label class="option-card selected" data-type="radio">
+                                <input type="radio" name="study_goal" value="quick_cram" checked>
+                                <span class="option-title">⚡ Quick Review</span>
+                                <span class="option-desc">Definitions, key terms, analogies, and quick exam cues.</span>
+                            </label>
+                            <label class="option-card" data-type="radio">
+                                <input type="radio" name="study_goal" value="balanced_review">
+                                <span class="option-title">⚖️ Balanced Review</span>
+                                <span class="option-desc">Clear definitions, logical flow, and essential takeaways.</span>
+                            </label>
+                            <label class="option-card" data-type="radio">
+                                <input type="radio" name="study_goal" value="deep_learning">
+                                <span class="option-title">📚 Deep Learning</span>
+                                <span class="option-desc">Comprehensive conceptual breakdowns and trade-offs.</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Practice Assessment Formats -->
+                    <div class="forge-config-group">
+                        <label class="forge-label">Practice Assessment Formats</label>
+                        <p class="option-helper">Select one or more formats. True or False questions are included automatically.</p>
+                        <div class="option-grid">
+                            <label class="option-card selected" data-type="checkbox">
+                                <input type="checkbox" name="assessment_focus" value="multiple_choice" checked>
+                                <span class="option-title">Multiple Choice</span>
+                                <span class="option-desc">Contrasting terms and plausible misconceptions.</span>
+                            </label>
+                            <label class="option-card" data-type="checkbox">
+                                <input type="checkbox" name="assessment_focus" value="identification">
+                                <span class="option-title">Identification</span>
+                                <span class="option-desc">Direct definition-to-term recognition cues.</span>
+                            </label>
+                            <label class="option-card" data-type="checkbox">
+                                <input type="checkbox" name="assessment_focus" value="enumeration">
+                                <span class="option-title">Enumeration</span>
+                                <span class="option-desc">Categorized lists, phases, and components.</span>
+                            </label>
+                        </div>
+                        <div class="planned-assessment" id="planned-assessment" aria-live="polite"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-chunky btn-block forge-btn" id="forge-submit-btn" disabled {% if eligibility and not eligibility.allowed %}title="Generation not currently available"{% endif %}>
+                        Create Course
+                    </button>
+                </section>
+            </div>
         </form>
     </main>
 </div>
@@ -653,7 +1027,7 @@
 <div id="forge-loader" class="forge-loader-backdrop" aria-hidden="true">
     <div class="forge-loader-card">
         <div class="forge-spinner"></div>
-        <span class="section-tag" style="color: var(--accent);">Synthesizing Curriculum</span>
+        <span class="section-tag" style="color: var(--accent);">Creating Your Course</span>
         <h3 id="forge-loader-status" class="forge-loader-title">Analyzing study materials...</h3>
         <p class="forge-loader-sub">Extracting key concepts, comparison tables, and quiz explanations.</p>
         <div class="forge-loader-bar">
@@ -663,47 +1037,291 @@
 </div>
 
 <script>
+    const MAX_FILES = 3;
+    const MAX_BUNDLE_BYTES = 20 * 1024 * 1024; // 20 MB default
+    const ALLOWED_EXTS = ['.pdf', '.docx', '.pptx', '.txt'];
+
+    let stagedFiles = [];
+    let draggedIndex = null;
+
+    const courseForm = document.getElementById('course-form');
+    const isGenerationAllowed = courseForm ? courseForm.dataset.generationAllowed === 'true' : true;
     const fileInput = document.getElementById('file-upload');
     const dropZone = document.getElementById('drop-zone');
-    const emptyState = document.getElementById('drop-empty-state');
-    const selectedState = document.getElementById('drop-selected-state');
-    const fileNameDisplay = document.getElementById('file-name');
-    const fileSizeDisplay = document.getElementById('file-size');
-    const removeBtn = document.getElementById('remove-file');
+    const dropTitleText = document.getElementById('drop-title-text');
+    const queueContainer = document.getElementById('staged-file-queue');
+    const bundleCountBadge = document.getElementById('bundle-count-badge');
+    const bundleTotalSizeDisplay = document.getElementById('bundle-total-size');
+    const meterFill = document.getElementById('meter-fill');
+    const submitBtn = document.getElementById('forge-submit-btn');
+    const studyFocusInput = document.getElementById('study-focus');
+    const focusCharCounter = document.getElementById('focus-char-counter');
 
+    // Focus character counter
+    if (studyFocusInput && focusCharCounter) {
+        function updateCharCounter() {
+            const count = studyFocusInput.value.length;
+            focusCharCounter.textContent = `${count} / 100`;
+            if (count >= 90) {
+                focusCharCounter.style.color = 'var(--danger)';
+            } else {
+                focusCharCounter.style.color = 'var(--muted)';
+            }
+        }
+        studyFocusInput.addEventListener('input', updateCharCounter);
+        updateCharCounter();
+    }
+
+    function formatFileSize(bytes) {
+        if (!bytes) return '0 KB';
+        const mb = bytes / (1024 * 1024);
+        if (mb >= 0.1) return mb.toFixed(1) + ' MB';
+        return (bytes / 1024).toFixed(0) + ' KB';
+    }
+
+    function getFileExtension(filename) {
+        const parts = filename.split('.');
+        return parts.length > 1 ? '.' + parts.pop().toLowerCase() : '';
+    }
+
+    function syncInputFiles() {
+        try {
+            const dt = new DataTransfer();
+            stagedFiles.forEach(file => dt.items.add(file));
+            fileInput.files = dt.files;
+        } catch (err) {
+            console.warn('DataTransfer sync unavailable in this environment:', err);
+        }
+    }
+
+    function renderQueue() {
+        queueContainer.innerHTML = '';
+
+        let totalBytes = 0;
+        stagedFiles.forEach(f => totalBytes += (f.size || 0));
+
+        // Update badge and sizes
+        bundleCountBadge.textContent = `${stagedFiles.length} / ${MAX_FILES} Files`;
+        const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
+        bundleTotalSizeDisplay.textContent = `${totalMb} MB / 20 MB`;
+
+        const pct = Math.min(100, Math.round((totalBytes / MAX_BUNDLE_BYTES) * 100));
+        meterFill.style.width = `${pct}%`;
+        meterFill.classList.toggle('warning', pct >= 95);
+
+        // Update dropzone appearance
+        if (stagedFiles.length >= MAX_FILES) {
+            dropZone.classList.add('is-full', 'compact');
+            dropTitleText.textContent = 'Bundle full (3 of 3 files staged)';
+        } else if (stagedFiles.length > 0) {
+            dropZone.classList.remove('is-full');
+            dropZone.classList.add('compact');
+            const remaining = MAX_FILES - stagedFiles.length;
+            dropTitleText.textContent = `+ Add file (${remaining} slot${remaining === 1 ? '' : 's'} remaining)`;
+        } else {
+            dropZone.classList.remove('is-full', 'compact');
+            dropTitleText.textContent = 'Drop up to 3 study files here';
+        }
+
+        // Render cards with drag handle and reordering support
+        stagedFiles.forEach((file, index) => {
+            const ext = getFileExtension(file.name);
+            const chipClass = ext.replace('.', '');
+
+            const card = document.createElement('div');
+            card.className = 'staged-file-card';
+            card.setAttribute('draggable', 'true');
+            card.dataset.idx = index;
+
+            card.innerHTML = `
+                <span class="drag-handle" title="Drag to reorder" aria-hidden="true">⋮⋮</span>
+                <div class="file-seq-anchor" title="File ${index + 1}">${index + 1}</div>
+                <span class="format-chip ${chipClass}">${chipClass.toUpperCase()}</span>
+                <div class="file-meta-col">
+                    <span class="file-meta-name" title="${file.name}">${file.name}</span>
+                    <span class="file-meta-size">${formatFileSize(file.size)}</span>
+                </div>
+                <div class="file-controls">
+                    <button type="button" class="btn-stepper" data-action="up" data-idx="${index}" 
+                            aria-label="Move ${file.name} earlier" ${index === 0 ? 'disabled' : ''}>↑</button>
+                    <button type="button" class="btn-stepper" data-action="down" data-idx="${index}" 
+                            aria-label="Move ${file.name} later" ${index === stagedFiles.length - 1 ? 'disabled' : ''}>↓</button>
+                    <button type="button" class="btn-remove-source" data-action="remove" data-idx="${index}" 
+                            aria-label="Remove ${file.name}" title="Remove file">✕</button>
+                </div>
+            `;
+
+            // HTML5 Drag & Drop event listeners for row reordering
+            card.addEventListener('dragstart', (e) => {
+                draggedIndex = index;
+                card.classList.add('is-dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(index));
+            });
+
+            card.addEventListener('dragend', () => {
+                card.classList.remove('is-dragging');
+                document.querySelectorAll('.staged-file-card').forEach(c => {
+                    c.classList.remove('drop-target-above', 'drop-target-below');
+                });
+                draggedIndex = null;
+            });
+
+            card.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (draggedIndex === null || draggedIndex === index) return;
+
+                const rect = card.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                if (e.clientY < midY) {
+                    card.classList.add('drop-target-above');
+                    card.classList.remove('drop-target-below');
+                } else {
+                    card.classList.add('drop-target-below');
+                    card.classList.remove('drop-target-above');
+                }
+            });
+
+            card.addEventListener('dragleave', () => {
+                card.classList.remove('drop-target-above', 'drop-target-below');
+            });
+
+            card.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                card.classList.remove('drop-target-above', 'drop-target-below');
+                if (draggedIndex === null || draggedIndex === index) return;
+
+                const rect = card.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                let targetIndex = index;
+                if (e.clientY >= midY && draggedIndex < index) {
+                    targetIndex = index;
+                } else if (e.clientY < midY && draggedIndex > index) {
+                    targetIndex = index;
+                }
+
+                const itemToMove = stagedFiles.splice(draggedIndex, 1)[0];
+                stagedFiles.splice(targetIndex, 0, itemToMove);
+                draggedIndex = null;
+
+                syncInputFiles();
+                renderQueue();
+            });
+
+            queueContainer.appendChild(card);
+        });
+
+        // Update submit button
+        if (!isGenerationAllowed) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Generation Limit Reached';
+        } else if (stagedFiles.length === 0) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Create Course';
+        } else if (stagedFiles.length === 1) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Course';
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.textContent = `Create Course from ${stagedFiles.length} Files`;
+        }
+    }
+
+    function addFiles(newFiles) {
+        let addedCount = 0;
+        for (let i = 0; i < newFiles.length; i++) {
+            if (stagedFiles.length >= MAX_FILES) {
+                alert(`You can stage a maximum of ${MAX_FILES} files per course.`);
+                break;
+            }
+            const file = newFiles[i];
+            const ext = getFileExtension(file.name);
+
+            if (!ALLOWED_EXTS.includes(ext)) {
+                alert(`"${file.name}" is not a supported file type. Allowed formats: PDF, DOCX, PPTX, TXT.`);
+                continue;
+            }
+
+            const isDuplicate = stagedFiles.some(f => 
+                f.name === file.name && f.size === file.size && f.lastModified === file.lastModified
+            );
+            if (isDuplicate) {
+                continue; // Skip duplicate silently or gracefully
+            }
+
+            stagedFiles.push(file);
+            addedCount++;
+        }
+
+        if (addedCount > 0) {
+            syncInputFiles();
+            renderQueue();
+        }
+    }
+
+    // Input change handler
     fileInput.addEventListener('change', function() {
-        if (this.files && this.files[0]) {
-            const file = this.files[0];
-            fileNameDisplay.textContent = file.name;
-            let size = (file.size / (1024 * 1024)).toFixed(2);
-            fileSizeDisplay.textContent = size > 0.01 ? size + ' MB' : (file.size / 1024).toFixed(1) + ' KB';
-            emptyState.classList.add('hidden');
-            selectedState.classList.remove('hidden');
-            dropZone.classList.add('has-file');
+        if (this.files && this.files.length) {
+            addFiles(Array.from(this.files));
         }
     });
 
-    removeBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        fileInput.value = '';
-        emptyState.classList.remove('hidden');
-        selectedState.classList.add('hidden');
-        dropZone.classList.remove('has-file');
+    // Queue button controls (event delegation)
+    queueContainer.addEventListener('click', function(e) {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const idx = parseInt(btn.dataset.idx, 10);
+        if (isNaN(idx)) return;
+
+        if (action === 'up' && idx > 0) {
+            const temp = stagedFiles[idx];
+            stagedFiles[idx] = stagedFiles[idx - 1];
+            stagedFiles[idx - 1] = temp;
+            syncInputFiles();
+            renderQueue();
+        } else if (action === 'down' && idx < stagedFiles.length - 1) {
+            const temp = stagedFiles[idx];
+            stagedFiles[idx] = stagedFiles[idx + 1];
+            stagedFiles[idx + 1] = temp;
+            syncInputFiles();
+            renderQueue();
+        } else if (action === 'remove') {
+            stagedFiles.splice(idx, 1);
+            syncInputFiles();
+            renderQueue();
+        }
     });
 
+    // Drag & Drop
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
     });
 
+    dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone.addEventListener('drop', function(e) {
-        let dt = e.dataTransfer;
+        dropZone.classList.remove('dragover');
+        if (stagedFiles.length >= MAX_FILES) return;
+        const dt = e.dataTransfer;
         if (dt.files && dt.files.length) {
-            fileInput.files = dt.files;
-            fileInput.dispatchEvent(new Event('change'));
+            addFiles(Array.from(dt.files));
         }
     });
 
+    dropZone.addEventListener('click', function(e) {
+        if (stagedFiles.length >= MAX_FILES) {
+            e.preventDefault();
+            return;
+        }
+        if (e.target.tagName !== 'INPUT' && !e.target.classList.contains('browse-link')) {
+            fileInput.click();
+        }
+    });
+
+    // Assessment Format Mix Calculation
     const mixPlans = {
         'multiple_choice': { multiple_choice: 7, true_false: 3, identification: 0, enumeration: 0 },
         'identification': { multiple_choice: 3, true_false: 2, identification: 5, enumeration: 0 },
@@ -754,15 +1372,19 @@
     const statusText = document.getElementById('forge-loader-status');
 
     const stages = [
-        "Analyzing document & structure...",
+        "Analyzing study materials...",
+        "Consolidating overlapping topics...",
         "Extracting definitions, terms & analogies...",
-        "Building comparison matrices...",
-        "Constructing quizzes & explanations...",
-        "Finalizing your learning path..."
+        "Building comparison matrices & questions...",
+        "Organizing your study materials..."
     ];
 
     form.addEventListener('submit', (event) => {
-        if (!fileInput.files || !fileInput.files.length) return;
+        if (!stagedFiles.length) {
+            event.preventDefault();
+            alert('Select at least one study file.');
+            return;
+        }
 
         if (!document.querySelector('input[name="assessment_focus"]:checked')) {
             event.preventDefault();
@@ -785,11 +1407,7 @@
         document.body.style.overflow = '';
     });
 
-    document.getElementById('retry-picker-btn')?.addEventListener('click', () => {
-        if (fileInput) {
-            fileInput.value = '';
-            fileInput.click();
-        }
-    });
+    // Initial render
+    renderQueue();
 </script>
 {% endblock %}
