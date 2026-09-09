@@ -19,9 +19,11 @@ from courses.plan_policies import PlanLimits, get_plan_policy
 from courses.schemas import GeneratedCourseMeta, GeneratedJourney
 from courses.services import (
     ALLOWED_EXTENSIONS,
+    CourseGenerationError,
     SourceBundleError,
     _generate_mock_journey,
     build_curriculum_prompt,
+    call_gemini_with_retry,
     extract_and_bundle_sources,
     generate_course_journey,
     sanitize_filename,
@@ -135,14 +137,23 @@ class MultiSourceExtractionTests(TestCase):
         self.assertEqual(ctx.exception.code, 'bundle_too_large')
 
     def test_extracted_text_budget_transparent_rejection(self):
-        # 46,000 characters exceeds 45,000 limit of free plan
-        huge_text = ('Knowledge ' * 4600).encode('utf-8')
+        # 76,000 characters exceeds 75,000 limit of free plan
+        huge_text = ('Knowledge ' * 8000).encode('utf-8')
         f = SimpleUploadedFile('dense.txt', huge_text, content_type='text/plain')
         with self.assertRaises(SourceBundleError) as ctx:
             extract_and_bundle_sources([f], 'free')
         self.assertEqual(ctx.exception.code, 'extracted_text_budget_exceeded')
         self.assertIn('characters', ctx.exception.message)
-        self.assertIn('45,000', ctx.exception.message)
+        self.assertIn('75,000', ctx.exception.message)
+        self.assertIsNotNone(ctx.exception.char_count)
+        self.assertEqual(ctx.exception.max_chars, 75000)
+
+    def test_techno_bundle_fits_under_new_75k_free_limit(self):
+        # 64,021 characters represents the user's 3-file Technopreneurship bundle
+        text_64k = ('Technopreneurship' * 4000)[:64021].encode('utf-8')
+        f1 = SimpleUploadedFile('techno_prelims.txt', text_64k, content_type='text/plain')
+        result = extract_and_bundle_sources([f1], 'free')
+        self.assertEqual(result['total_characters'], 64021)
 
     def test_empty_extracted_text_rejected(self):
         f = SimpleUploadedFile('empty.txt', b'   \n\t  \n  ', content_type='text/plain')
@@ -313,3 +324,75 @@ class MultiSourceCourseCreationIntegrationTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertFalse(Course.objects.filter(title='Failed AI Course').exists())
             self.assertEqual(CourseCreditTransaction.objects.filter(user=self.user).count(), 0)
+
+    @override_settings(USE_MOCK_COURSE_GENERATION=False)
+    @patch('courses.services.time.sleep', return_value=None)
+    def test_gemini_503_exhaustion_raises_and_preserves_credits(self, mock_sleep):
+        f = SimpleUploadedFile('techno.txt', b'Technopreneurship lecture notes about lean startup.', content_type='text/plain')
+        mock_503_err = Exception("503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}")
+
+        with patch('courses.services.client') as mock_client:
+            mock_client.models.generate_content.side_effect = mock_503_err
+            response = self.client.post(
+                reverse('courses:course_create'),
+                {
+                    'custom_title': 'TECHNO PRELIMS',
+                    'content_files': [f],
+                },
+                follow=True,
+            )
+            # Exactly 3 attempts executed
+            self.assertEqual(mock_client.models.generate_content.call_count, 3)
+            # Sleep called twice between attempts
+            self.assertEqual(mock_sleep.call_count, 2)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.context.get('generation_failed'))
+            self.assertIn("503", response.context.get('generation_error', ''))
+            self.assertFalse(Course.objects.filter(title='TECHNO PRELIMS').exists())
+            self.assertEqual(CourseCreditTransaction.objects.filter(user=self.user).count(), 0)
+
+    @override_settings(USE_MOCK_COURSE_GENERATION=False)
+    @patch('courses.services.time.sleep', return_value=None)
+    def test_gemini_503_transient_recovers_on_retry(self, mock_sleep):
+        f = SimpleUploadedFile('techno.txt', b'Technopreneurship lecture notes about lean startup.', content_type='text/plain')
+        mock_503_err = Exception("503 UNAVAILABLE. High demand spike.")
+        success_journey = _generate_mock_journey("Recovered TECHNO Course")
+        success_response = MagicMock(text=json.dumps(success_journey))
+
+        with patch('courses.services.client') as mock_client:
+            mock_client.models.generate_content.side_effect = [mock_503_err, success_response]
+            response = self.client.post(
+                reverse('courses:course_create'),
+                {
+                    'custom_title': 'Recovered TECHNO Course',
+                    'content_files': [f],
+                },
+                follow=True,
+            )
+            # Attempt 1 failed, attempt 2 succeeded
+            self.assertEqual(mock_client.models.generate_content.call_count, 2)
+            self.assertEqual(mock_sleep.call_count, 1)
+
+            self.assertEqual(response.status_code, 200)
+            course = Course.objects.filter(user=self.user, title='Recovered TECHNO Course').first()
+            self.assertIsNotNone(course)
+            self.assertEqual(CourseCreditTransaction.objects.filter(user=self.user, related_course=course).count(), 1)
+
+    @override_settings(USE_MOCK_COURSE_GENERATION=False)
+    @patch('courses.services.client', None)
+    def test_gemini_client_absent_raises_without_consuming_credit(self):
+        f = SimpleUploadedFile('techno.txt', b'Technopreneurship lecture notes about lean startup.', content_type='text/plain')
+        response = self.client.post(
+            reverse('courses:course_create'),
+            {
+                'custom_title': 'No Client Course',
+                'content_files': [f],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context.get('generation_failed'))
+        self.assertIn("not configured", response.context.get('generation_error', '').lower())
+        self.assertFalse(Course.objects.filter(title='No Client Course').exists())
+        self.assertEqual(CourseCreditTransaction.objects.filter(user=self.user).count(), 0)

@@ -132,3 +132,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'courses:course_list'
+
+# Course Generation Settings
+# Set to True only for offline dev or automated testing; False in production to prevent silent mock fallback
+USE_MOCK_COURSE_GENERATION = False

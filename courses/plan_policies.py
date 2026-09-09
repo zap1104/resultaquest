@@ -14,6 +14,10 @@ class PlanLimits:
     max_bundle_bytes: int
     max_extracted_characters: int
 
+    @property
+    def max_extracted_chars(self) -> int:
+        return self.max_extracted_characters
+
 
 PLAN_POLICIES = {
     "free": PlanLimits(
@@ -26,7 +30,7 @@ PLAN_POLICIES = {
         max_source_files=3,
         max_file_bytes=10 * 1024 * 1024,
         max_bundle_bytes=20 * 1024 * 1024,
-        max_extracted_characters=45000,
+        max_extracted_characters=75000,
     ),
     "plus": PlanLimits(
         name="StudyQuest Plus",
@@ -38,7 +42,7 @@ PLAN_POLICIES = {
         max_source_files=3,
         max_file_bytes=25 * 1024 * 1024,
         max_bundle_bytes=50 * 1024 * 1024,
-        max_extracted_characters=75000,
+        max_extracted_characters=125000,
     ),
 }
 
@@ -54,6 +58,7 @@ PLAN_LIMITS = {
         "max_file_bytes": policy.max_file_bytes,
         "max_bundle_bytes": policy.max_bundle_bytes,
         "max_extracted_characters": policy.max_extracted_characters,
+        "max_extracted_chars": policy.max_extracted_characters,
     }
     for plan_key, policy in PLAN_POLICIES.items()
 }

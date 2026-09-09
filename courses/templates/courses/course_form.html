@@ -583,11 +583,36 @@
         background: var(--danger);
     }
 
+    .content-limit-note {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 0.72rem;
+        padding-top: 2px;
+    }
+
+    .content-limit-note strong {
+        color: var(--ink);
+    }
+
+    .content-limit-note small {
+        margin-left: auto;
+        white-space: nowrap;
+    }
+
+    .content-limit-help {
+        color: var(--primary);
+        cursor: help;
+        font-size: 0.85rem;
+    }
+
     .queue-helper-note {
         font-size: 0.74rem;
         color: var(--muted);
         line-height: 1.4;
         margin: 0;
+        padding-top: 2px;
     }
 
     .char-counter {
@@ -894,19 +919,28 @@
         </div>
 
         {% if generation_failed %}
-            <div class="generation-alert" role="alert" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);">
-                <div style="font-size: 1.4rem;">⚠️</div>
+            <div class="generation-alert" role="alert" style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3);">
+                <div style="font-size: 1.4rem; line-height: 1;">⚠️</div>
                 <div style="flex: 1;">
-                    <strong style="color: var(--danger); font-size: 0.92rem;">Generation Interrupted</strong>
-                    <p style="margin: 0; font-size: 0.84rem; color: var(--muted);">{{ generation_error|default:"Could not synthesize curriculum." }}</p>
+                    <strong style="color: var(--danger); font-size: 0.92rem; display: block; margin-bottom: 2px;">
+                        {% if char_count and max_chars %}Bundle Exceeds Text Capacity{% else %}Generation Interrupted{% endif %}
+                    </strong>
+                    <p style="margin: 0; font-size: 0.84rem; color: var(--muted); line-height: 1.45;">
+                        {{ generation_error|default:"Could not synthesize curriculum. Please try again." }}
+                    </p>
+                    {% if char_count and max_chars %}
+                        <div style="display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; padding: 3px 8px; border-radius: 6px; background: rgba(239, 68, 68, 0.12); font-size: 0.76rem; font-weight: 700; color: var(--danger);">
+                            <span>Extracted: {{ char_count|stringformat:"d" }} / {{ max_chars|stringformat:"d" }} characters</span>
+                        </div>
+                    {% endif %}
                     {% if failed_filename %}
-                        <p style="margin: 2px 0 0; font-size: 0.78rem; color: var(--danger);">Problem file: <strong>{{ failed_filename }}</strong></p>
+                        <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--danger);">Problem file: <strong>{{ failed_filename }}</strong></p>
                     {% endif %}
                 </div>
             </div>
         {% endif %}
 
-        <form method="post" enctype="multipart/form-data" class="forge-form" id="course-form">
+        <form method="post" enctype="multipart/form-data" class="forge-form" id="course-form" data-generation-allowed="{{ eligibility.allowed|yesno:'true,false' }}">
             {% csrf_token %}
 
             <div class="forge-grid">
@@ -934,7 +968,7 @@
                     <!-- Combined Upload Meter -->
                     <div class="bundle-meter" id="bundle-meter">
                         <div class="meter-info">
-                            <span>Combined upload size:</span>
+                            <span>File upload size:</span>
                             <strong id="bundle-total-size">0.0 MB / 20 MB</strong>
                         </div>
                         <div class="meter-bar">
@@ -942,8 +976,24 @@
                         </div>
                     </div>
 
+                    <div class="content-limit-note">
+                        <span>
+                            Course content limit:
+                            <strong>{% if profile.plan == 'plus' %}125,000{% else %}75,000{% endif %} characters</strong>
+                        </span>
+                        <span
+                            class="content-limit-help"
+                            tabindex="0"
+                            title="Based on readable text extracted from your files. Checked when creating the course."
+                            aria-label="The content limit is based on readable text extracted from the selected files and is checked when creating the course."
+                        >
+                            ⓘ
+                        </span>
+                        <small>Checked when creating</small>
+                    </div>
+
                     <p class="queue-helper-note">
-                        ℹ️ <strong>Order sequence:</strong> Drag files into your preferred study order. Related topics may be combined.
+                        ℹ️ <strong>Study sequence:</strong> Drag files into the order you want to learn, such as Module 1 before Module 2.
                     </p>
                 </section>
 

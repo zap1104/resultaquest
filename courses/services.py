@@ -24,13 +24,20 @@ client = genai.Client(api_key=api_key) if api_key else None
 GEMINI_MODEL = "gemini-3.6-flash"
 
 
+class CourseGenerationError(Exception):
+    """Raised when the AI generation pipeline fails and cannot produce a course."""
+    pass
+
+
 class SourceBundleError(Exception):
     """Raised when an uploaded study material bundle fails validation or extraction."""
-    def __init__(self, message, *, filename=None, code=None):
+    def __init__(self, message, *, filename=None, code=None, char_count=None, max_chars=None):
         super().__init__(message)
         self.message = message
         self.filename = filename
         self.code = code
+        self.char_count = char_count
+        self.max_chars = max_chars
 
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".txt"}
@@ -500,11 +507,14 @@ def extract_and_bundle_sources(uploaded_files, plan_name="free"):
         })
 
     if total_characters > policy.max_extracted_characters:
+        plan_title = policy.name.replace("StudyQuest ", "")
         raise SourceBundleError(
-            f"The selected materials contain more text ({total_characters:,} characters) "
-            f"than your course plan limit ({policy.max_extracted_characters:,} characters). "
+            f"The selected files contain {total_characters:,} characters, which exceeds "
+            f"your current {plan_title} plan limit of {policy.max_extracted_characters:,} characters. "
             "Remove one file or upload a shorter set of related materials.",
             code="extracted_text_budget_exceeded",
+            char_count=total_characters,
+            max_chars=policy.max_extracted_characters,
         )
 
     total_count = len(extracted_sources)
@@ -536,6 +546,82 @@ def extract_and_bundle_sources(uploaded_files, plan_name="free"):
     }
 
 
+def is_transient_gemini_error(err):
+    """
+    Determines if an error returned from Gemini is transient (503 / 429 / overloaded / spike)
+    and suitable for bounded retry with backoff.
+    """
+    code = getattr(err, "code", None)
+    if code in (503, 429):
+        return True
+    err_str = str(err).lower()
+    transient_indicators = (
+        "503",
+        "429",
+        "unavailable",
+        "high demand",
+        "overloaded",
+        "resource exhausted",
+        "rate limit",
+        "temporary",
+    )
+    return any(indicator in err_str for indicator in transient_indicators)
+
+
+def call_gemini_with_retry(prompt, max_retries=3):
+    """
+    Calls Gemini API with bounded exponential backoff and jitter for transient errors.
+    Returns the response object, or None if dev mock fallback is explicitly enabled.
+    Raises CourseGenerationError on permanent failure or retry exhaustion.
+    """
+    if not client:
+        if getattr(settings, "USE_MOCK_COURSE_GENERATION", False):
+            logger.warning("[Gemini Client Absent]: Fallback to dev mock course.")
+            return None
+        raise CourseGenerationError(
+            "Gemini AI client is not configured. Please verify GEMINI_API_KEY."
+        )
+
+    delay = 1.5
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.2,
+                ),
+            )
+            return response
+        except Exception as err:
+            is_transient = is_transient_gemini_error(err)
+            if is_transient and attempt < max_retries:
+                sleep_time = delay + random.uniform(0.4, 1.0)
+                logger.warning(
+                    f"[Gemini Transient Spike] Attempt {attempt}/{max_retries} failed ({err}). "
+                    f"Retrying in {sleep_time:.2f}s..."
+                )
+                time.sleep(sleep_time)
+                delay *= 2
+            else:
+                logger.error(
+                    f"[Gemini API Call Failure]: Attempt {attempt}/{max_retries} failed. Error: {repr(err)}"
+                )
+                if getattr(settings, "USE_MOCK_COURSE_GENERATION", False):
+                    logger.warning("[Falling back to mock structured journey per USE_MOCK_COURSE_GENERATION=True]")
+                    return None
+                if is_transient:
+                    raise CourseGenerationError(
+                        "Google's AI model is currently experiencing high demand (503). "
+                        "Your course was not created, and no generation credit was consumed. "
+                        "Please wait a minute and try again."
+                    ) from err
+                raise CourseGenerationError(
+                    f"AI course generation failed: {err}"
+                ) from err
+
+
 def generate_course_journey(
     course,
     uploaded_file=None,
@@ -561,38 +647,53 @@ def generate_course_journey(
 
     course_title = getattr(course, "title", str(course))
 
-    if client and len(extracted_text) > 40:
-        try:
-            prompt = build_curriculum_prompt(
-                course_title=course_title,
-                extracted_text=extracted_text,
-                study_goal=study_goal,
+    if len(extracted_text) <= 40:
+        if getattr(settings, "USE_MOCK_COURSE_GENERATION", False):
+            return _generate_mock_journey(
+                course_title,
                 assessment_formats=assessment_formats,
-                study_focus=study_focus,
                 source_filenames=bundle_meta["filenames"] if bundle_meta else None,
             )
-            response = client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.2,
-                ),
-            )
-            validated = _validate_response(response.text, get_assessment_mix(assessment_formats))
-            if bundle_meta:
-                validated["course"]["source_bundle_count"] = len(bundle_meta["filenames"])
-                validated["course"]["source_filenames"] = bundle_meta["filenames"]
-            return validated
-        except Exception as e:
-            print(f"[Gemini API Call Failure]: {e}")
+        raise CourseGenerationError(
+            "Extracted study material does not contain sufficient readable text to build a course."
+        )
 
-    print("[Falling back to mock structured journey]")
-    return _generate_mock_journey(
-        course_title,
+    prompt = build_curriculum_prompt(
+        course_title=course_title,
+        extracted_text=extracted_text,
+        study_goal=study_goal,
         assessment_formats=assessment_formats,
+        study_focus=study_focus,
         source_filenames=bundle_meta["filenames"] if bundle_meta else None,
     )
+
+    response = call_gemini_with_retry(prompt)
+    if response is None:
+        return _generate_mock_journey(
+            course_title,
+            assessment_formats=assessment_formats,
+            source_filenames=bundle_meta["filenames"] if bundle_meta else None,
+        )
+
+    try:
+        validated = _validate_response(response.text, get_assessment_mix(assessment_formats))
+    except Exception as validation_err:
+        logger.error(f"[AI Schema Validation Failed]: {validation_err}")
+        if getattr(settings, "USE_MOCK_COURSE_GENERATION", False):
+            return _generate_mock_journey(
+                course_title,
+                assessment_formats=assessment_formats,
+                source_filenames=bundle_meta["filenames"] if bundle_meta else None,
+            )
+        raise CourseGenerationError(
+            "The AI generated an invalid course structure. "
+            "Your course was not created, and no generation credit was consumed. Please try again."
+        ) from validation_err
+
+    if bundle_meta:
+        validated["course"]["source_bundle_count"] = len(bundle_meta["filenames"])
+        validated["course"]["source_filenames"] = bundle_meta["filenames"]
+    return validated
 
 
 def validate_question_mix(journey, required_mix):

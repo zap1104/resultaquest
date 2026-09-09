@@ -4,6 +4,7 @@ import re
 import unicodedata
 from decimal import Decimal
 
+from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
@@ -29,7 +30,7 @@ from .models import (
     UserProfile,
 )
 from .schemas import GenerationPreferences
-from .services import generate_course_journey, SourceBundleError
+from .services import CourseGenerationError, generate_course_journey, SourceBundleError
 
 logger = logging.getLogger(__name__)
 
@@ -382,6 +383,18 @@ def course_create(request):
                 "generation_failed": True,
                 "generation_error": str(err),
                 "failed_filename": err.filename,
+                "char_count": err.char_count,
+                "max_chars": err.max_chars,
+                "custom_title": custom_title,
+                "study_focus": study_focus,
+            })
+        except CourseGenerationError as err:
+            logger.error(f"[Course Generation Pipeline Interrupted]: {err}")
+            return render(request, "courses/course_form.html", {
+                "eligibility": eligibility,
+                "profile": profile,
+                "generation_failed": True,
+                "generation_error": str(err),
                 "custom_title": custom_title,
                 "study_focus": study_focus,
             })
