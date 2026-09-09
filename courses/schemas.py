@@ -216,6 +216,8 @@ class GeneratedChapter(BaseModel):
     enumerations: Optional[List[GeneratedEnumeration]] = Field(default_factory=list)
     common_confusions: Optional[List[GeneratedCommonConfusion]] = Field(default_factory=list)
     key_takeaways: Optional[List[str]] = Field(default_factory=list)
+    source_files: Optional[List[str]] = Field(default_factory=list, max_length=3)
+    primary_source_file: Optional[str] = None
     quiz: GeneratedQuiz
 
 # --------------------------------------------------
@@ -226,6 +228,8 @@ class GeneratedCourseMeta(BaseModel):
     description: str = Field(min_length=1, max_length=500)
     source_type: Optional[str] = "reviewer"
     difficulty: Optional[str] = "intermediate"
+    source_bundle_count: Optional[int] = Field(default=1, ge=1, le=3)
+    source_filenames: Optional[List[str]] = Field(default_factory=list)
 
 class GeneratedJourney(BaseModel):
     schema_version: Literal["1.0"] = "1.0"
