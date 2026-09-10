@@ -22,6 +22,9 @@
         .plan-menu-heading span { color:var(--ink); font-size:.95rem; font-weight:900; }
         .plan-menu-heading strong { color:var(--accent); font-size:.68rem; text-transform:uppercase; }
         .plan-menu-copy { margin:0 0 12px; color:var(--muted); font-size:.76rem; line-height:1.5; }
+        .topbar-profile-link { display:inline-flex; align-items:center; gap:7px; padding:3px 10px 3px 4px; border-radius:999px; background:rgba(108,92,231,.1); border:1px solid rgba(108,92,231,.25); color:var(--ink); text-decoration:none; font-size:.78rem; font-weight:700; transition:all .2s ease; }
+        .topbar-profile-link:hover { background:rgba(108,92,231,.18); border-color:var(--primary); }
+        .profile-chip-avatar { width:22px; height:22px; border-radius:50%; background:var(--primary); color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:.68rem; font-weight:900; }
     </style>
 </head>
 <body>
@@ -40,9 +43,14 @@
                 <a href="{% url 'courses:dashboard' %}" class="topbar-link">Dashboard</a>
                 <a href="{% url 'courses:course_list' %}" class="topbar-link">Course Library</a>
                 <a href="{% url 'courses:course_create' %}" class="topbar-link">Create Course</a>
+                <a href="{% url 'courses:leaderboard' %}" class="topbar-link">Rank &amp; Tiers</a>
             </nav>
 
             <div class="stats topbar-desktop-stats">
+                <a href="{% url 'courses:profile' %}" class="topbar-profile-link" title="View Profile">
+                    <span class="profile-chip-avatar">{{ user.username|first|upper }}</span>
+                    <span class="profile-chip-name">{{ user.username }}</span>
+                </a>
                 <div class="topbar-plan">
                     <button type="button" class="topbar-plan-chip {% if user.userprofile.plan == 'plus' %}is-plus{% endif %}" id="topbar-plan-btn" aria-expanded="false" aria-controls="topbar-plan-menu"><span class="plan-dot"></span>{% if user.userprofile.plan == 'plus' %}Plus{% else %}Free{% endif %}<span aria-hidden="true">▾</span></button>
                     <div class="topbar-plan-menu" id="topbar-plan-menu" hidden>
@@ -68,6 +76,8 @@
                 <a href="{% url 'courses:dashboard' %}">📊 Dashboard</a>
                 <a href="{% url 'courses:course_list' %}">📚 Course Library</a>
                 <a href="{% url 'courses:course_create' %}">⚡ Create Course</a>
+                <a href="{% url 'courses:leaderboard' %}">🏆 Rank &amp; Tiers</a>
+                <a href="{% url 'courses:profile' %}">👤 My Profile</a>
             </div>
 
             <div class="mobile-nav-stats">
