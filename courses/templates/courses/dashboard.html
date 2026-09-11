@@ -10,18 +10,23 @@
     .page {
         max-width: 1440px !important;
         width: 100% !important;
-        padding: 32px 24px 20px !important;
+        padding: clamp(10px, 1.5vh, 18px) 24px clamp(6px, 1vh, 10px) !important;
         box-sizing: border-box;
+    }
+
+    body:has(.dashboard-page) .footer {
+        padding: 6px 16px;
+        font-size: 0.70rem;
     }
 
     .dashboard-page .dashboard-page-shell {
         display: grid;
         grid-template-columns: minmax(0, 1fr) 240px;
-        gap: 24px;
+        gap: clamp(14px, 1.8vh, 22px);
         align-items: start;
         width: 100%;
         margin: 0 auto;
-        padding: 24px 28px 56px;
+        padding: clamp(6px, 1vh, 12px) clamp(16px, 2vw, 24px) clamp(10px, 1.6vh, 20px);
         box-sizing: border-box;
         overflow: visible;
     }
@@ -34,7 +39,7 @@
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: clamp(12px, 1.5vh, 16px);
     }
 
     .dashboard-page .dashboard-grid {
@@ -59,14 +64,14 @@
 
     .dashboard-page .dashboard-ad-rail {
         position: sticky;
-        top: 96px;
+        top: calc(var(--topbar-height) + 12px);
         width: 240px;
         flex-shrink: 0;
         align-self: start;
-        max-height: calc(100dvh - 124px);
+        max-height: calc(100dvh - var(--topbar-height) - 28px);
         overflow-x: hidden;
         overflow-y: auto;
-        padding: 0 4px 16px;
+        padding: 0 4px 12px;
         box-sizing: border-box;
         overscroll-behavior: contain;
         z-index: 5;
@@ -140,7 +145,7 @@
     .sponsor-media-frame {
         width: 100%;
         aspect-ratio: 9 / 16;
-        max-height: 390px;
+        max-height: clamp(260px, 35vh, 370px);
         background: #080c24;
         overflow: hidden;
         position: relative;
@@ -517,7 +522,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        padding: 16px 20px;
+        padding: clamp(10px, 1.4vh, 14px) clamp(14px, 1.8vw, 18px);
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
@@ -587,11 +592,11 @@
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 26px 28px;
+        padding: clamp(16px, 2.2vh, 22px) clamp(18px, 2.2vw, 24px);
         box-shadow: var(--shadow);
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: clamp(10px, 1.4vh, 14px);
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
     .next-action-card.state-reading_not_started {
@@ -621,7 +626,7 @@
     .next-action-content {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: clamp(10px, 1.4vh, 14px);
     }
     .next-action-header {
         display: flex;
@@ -738,11 +743,11 @@
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 18px 20px;
+        padding: clamp(12px, 1.6vh, 16px) clamp(14px, 1.8vw, 18px);
         box-shadow: var(--shadow);
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: clamp(8px, 1.2vh, 12px);
     }
     .mini-card-header {
         display: flex;
@@ -1019,7 +1024,14 @@
 
                             <div class="next-action-buttons">
                                 {% if next_action.primary_button_url %}
-                                    <a href="{{ next_action.primary_button_url }}" class="btn btn-primary btn-chunky">
+                                    <a href="{{ next_action.primary_button_url }}"
+                                       class="btn btn-primary btn-chunky {% if '/quiz/' in next_action.primary_button_url %}prequiz-trigger{% endif %}"
+                                       {% if '/quiz/' in next_action.primary_button_url %}
+                                           data-quiz-url="{{ next_action.primary_button_url }}"
+                                           data-lesson-completed="{{ next_action.lesson_completed|yesno:'true,false' }}"
+                                           {% if next_action.chapter %}data-chapter-id="{{ next_action.chapter.pk }}"{% endif %}
+                                           {% if next_action.review_url %}data-review-url="{{ next_action.review_url }}"{% endif %}
+                                       {% endif %}>
                                         {{ next_action.primary_button_label }}
                                     </a>
                                 {% endif %}
@@ -1030,7 +1042,14 @@
                                             {{ next_action.secondary_button_label }} <span aria-hidden="true">🔒</span>
                                         </button>
                                     {% elif next_action.secondary_button_url %}
-                                        <a href="{{ next_action.secondary_button_url }}" class="btn btn-outline btn-sm">
+                                        <a href="{{ next_action.secondary_button_url }}"
+                                           class="btn btn-outline btn-sm {% if '/quiz/' in next_action.secondary_button_url %}prequiz-trigger{% endif %}"
+                                           {% if '/quiz/' in next_action.secondary_button_url %}
+                                               data-quiz-url="{{ next_action.secondary_button_url }}"
+                                               data-lesson-completed="{{ next_action.lesson_completed|yesno:'true,false' }}"
+                                               {% if next_action.chapter %}data-chapter-id="{{ next_action.chapter.pk }}"{% endif %}
+                                               {% if next_action.review_url %}data-review-url="{{ next_action.review_url }}"{% endif %}
+                                           {% endif %}>
                                             {{ next_action.secondary_button_label }}
                                         </a>
                                     {% endif %}

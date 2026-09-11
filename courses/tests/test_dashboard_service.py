@@ -92,9 +92,56 @@ class DashboardNextActionUnitTests(TestCase):
         self.assertEqual(action["chapter"], ch1)
         self.assertEqual(action["primary_button_url"], reverse("courses:chapter_review", args=[ch1.pk]))
         self.assertIn("Continue Reading", action["primary_button_label"])
-        self.assertTrue(action["secondary_button_disabled"])
-        self.assertIn("Complete the chapter reading", action["lock_reason"])
+        self.assertFalse(action["secondary_button_disabled"])
+        self.assertIn("Try Quiz First", action["secondary_button_label"])
         self.assertEqual(action["progress_pct"], 0)
+
+    def test_state_reading_required_when_quiz_scored_between_75_and_89_without_reading(self):
+        course = Course.objects.create(user=self.user, title="Physics 101", status="active")
+        ch1 = Chapter.objects.create(course=course, order=1, title="Kinematics")
+        quiz = Quiz.objects.create(chapter=ch1, title="Kinematics Quiz")
+
+        # 3/4 = 75% score, but no ChapterCompletion
+        QuizAttempt.objects.create(
+            user=self.user,
+            quiz=quiz,
+            score=3,
+            total_questions=4,
+            xp_earned=35,
+            review_data={"percentage": 75, "passed": True},
+        )
+
+        action = get_dashboard_next_action(self.user)
+        self.assertEqual(action["state"], "reading_required_for_pass")
+        self.assertEqual(action["chapter"], ch1)
+        self.assertIn("Complete Chapter 1 Reading", action["primary_button_label"])
+        self.assertIn("Retake Quiz", action["secondary_button_label"])
+        self.assertFalse(action["secondary_button_disabled"])
+        self.assertIn("Scored 75% on quiz", action["status_text"])
+
+    def test_advances_to_subsequent_chapter_via_prior_knowledge_without_reading(self):
+        course = Course.objects.create(user=self.user, title="Chemistry 101", status="active")
+        ch1 = Chapter.objects.create(course=course, order=1, title="Atoms")
+        quiz1 = Quiz.objects.create(chapter=ch1, title="Atoms Quiz")
+        ch2 = Chapter.objects.create(course=course, order=2, title="Bonds")
+        Quiz.objects.create(chapter=ch2, title="Bonds Quiz")
+
+        # Pass Chapter 1 quiz with 100% (>= 90%) without ChapterCompletion
+        QuizAttempt.objects.create(
+            user=self.user,
+            quiz=quiz1,
+            score=4,
+            total_questions=4,
+            xp_earned=60,
+            review_data={"percentage": 100, "passed": True},
+        )
+
+        action = get_dashboard_next_action(self.user)
+        self.assertEqual(action["state"], "reading_not_started")
+        self.assertEqual(action["chapter"], ch2)
+        self.assertEqual(action["progress_pct"], 50)
+        self.assertEqual(action["completed_chapters"], 1)
+        self.assertEqual(action["total_chapters"], 2)
 
     def test_state_quiz_ready_when_reading_complete_and_quiz_not_taken(self):
         course = Course.objects.create(user=self.user, title="Physics 101", status="active")

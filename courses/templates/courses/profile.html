@@ -341,6 +341,47 @@
     flex-shrink: 0;
 }
 
+.profile-hero-right .btn {
+    white-space: nowrap;
+    text-align: center;
+    justify-content: center;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    min-height: 38px;
+    padding: 8px 18px;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.12);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.profile-hero-right .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.2), 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+.profile-hero-right .btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+.profile-hero-right .btn-primary {
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 0 #3730a3, 0 6px 18px rgba(108, 92, 231, 0.4);
+}
+.profile-hero-right .btn-primary:hover {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    box-shadow: 0 5px 0 #3730a3, 0 8px 22px rgba(108, 92, 231, 0.55);
+}
+.profile-hero-right .btn-outline {
+    background: rgba(108, 92, 231, 0.12);
+    border: 1.5px solid rgba(129, 140, 248, 0.45);
+    color: #c7d2fe;
+    box-shadow: 0 3px 0 rgba(108, 92, 231, 0.25), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+.profile-hero-right .btn-outline:hover {
+    background: rgba(108, 92, 231, 0.22);
+    border-color: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 4px 0 rgba(108, 92, 231, 0.35), 0 0 16px rgba(108, 92, 231, 0.3);
+}
+
 /* 2. Four-Stat Grid */
 .profile-stats-grid {
     display: grid;

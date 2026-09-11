@@ -13,6 +13,8 @@ from django.utils import timezone
 from .models import ChapterCompletion, Course, QuizAttempt, UserProfile
 
 QUIZ_PASS_THRESHOLD = 75
+GUIDED_PASS_THRESHOLD = 75
+PRIOR_KNOWLEDGE_THRESHOLD = 90
 
 
 def get_streak_status(profile):
@@ -56,7 +58,7 @@ def get_streak_status(profile):
 
 def _get_chapter_completion_state(user, chapter):
     """
-    Helper checking reading completion and quiz passing status.
+    Helper checking reading completion and dual-route quiz passing status.
     """
     lesson_completed = ChapterCompletion.objects.filter(user=user, chapter=chapter).exists()
     quiz = getattr(chapter, "quiz", None)
@@ -70,21 +72,28 @@ def _get_chapter_completion_state(user, chapter):
             if best_percentage is None or pct > best_percentage:
                 best_percentage = pct
 
-    quiz_passed = (best_percentage is not None and best_percentage >= QUIZ_PASS_THRESHOLD)
-    has_failed_attempt = (best_percentage is not None and best_percentage < QUIZ_PASS_THRESHOLD)
+    quiz_passed = (best_percentage is not None and best_percentage >= GUIDED_PASS_THRESHOLD)
+    prior_knowledge_passed = (best_percentage is not None and best_percentage >= PRIOR_KNOWLEDGE_THRESHOLD)
+    has_failed_attempt = (best_percentage is not None and best_percentage < GUIDED_PASS_THRESHOLD)
+    tested_out = prior_knowledge_passed and not lesson_completed
 
     if has_quiz:
-        completed = quiz_passed
+        completed = (lesson_completed and quiz_passed) or prior_knowledge_passed
     else:
         completed = lesson_completed
+
+    unlock_route = "guided" if (lesson_completed and (not has_quiz or quiz_passed)) else ("prior_knowledge" if prior_knowledge_passed else None)
 
     return {
         "lesson_completed": lesson_completed,
         "has_quiz": has_quiz,
         "best_percentage": best_percentage,
         "quiz_passed": quiz_passed,
+        "prior_knowledge_passed": prior_knowledge_passed,
         "has_failed_attempt": has_failed_attempt,
+        "tested_out": tested_out,
         "completed": completed,
+        "unlock_route": unlock_route,
     }
 
 
@@ -200,36 +209,90 @@ def get_dashboard_next_action(user):
             review_url = reverse("courses:chapter_review", args=[ch.pk])
             quiz_url = reverse("courses:chapter_quiz", args=[ch.pk]) if ch_state["has_quiz"] else None
 
-            # Lesson unread / reading incomplete
-            if not ch_state["lesson_completed"]:
+            # Case A: Lesson unread, but quiz passed at 75%-89% (reading required to advance)
+            if not ch_state["lesson_completed"] and ch_state["quiz_passed"]:
+                next_order = ch.order + 1
                 return {
-                    "state": "reading_not_started",
+                    "state": "reading_required_for_pass",
                     "course": candidate,
                     "chapter": ch,
-                    "eyebrow": "Next in Your Course",
+                    "lesson_completed": ch_state["lesson_completed"],
+                    "review_url": review_url,
+                    "eyebrow": "Complete Reading to Advance",
                     "title": candidate.title,
                     "subtitle": f"Chapter {ch.order}: {ch.title}",
-                    "status_text": "Lesson review in progress. Complete the chapter reading before taking the quiz.",
-                    "button_label": f"📖 Continue Reading Chapter {ch.order} →",
+                    "status_text": f"Scored {ch_state['best_percentage']}% on quiz. Mark the chapter reading as complete to unlock Chapter {next_order} (or score ≥ 90% on the quiz to bypass).",
+                    "button_label": f"📖 Complete Chapter {ch.order} Reading (+15 XP) →",
                     "button_url": review_url,
-                    "primary_button_label": f"📖 Continue Reading Chapter {ch.order} →",
+                    "primary_button_label": f"📖 Complete Chapter {ch.order} Reading (+15 XP) →",
                     "primary_button_url": review_url,
-                    "secondary_button_label": f"⚡ Take Chapter {ch.order} Quiz",
+                    "secondary_button_label": f"⚡ Retake Quiz (Aim for ≥90%)",
                     "secondary_button_url": quiz_url,
-                    "secondary_button_disabled": True,
-                    "lock_reason": "Complete the chapter reading to unlock the quiz.",
+                    "secondary_button_disabled": False,
+                    "lock_reason": None,
                     "progress_pct": course_summary["pct"],
                     "completed_chapters": course_summary["completed"],
                     "total_chapters": course_summary["total"],
                 }
 
-            # Lesson completed, quiz not passed
+            # Case B: Lesson unread / reading incomplete
+            if not ch_state["lesson_completed"]:
+                if ch_state["has_failed_attempt"]:
+                    return {
+                        "state": "quiz_not_passed",
+                        "course": candidate,
+                        "chapter": ch,
+                        "lesson_completed": ch_state["lesson_completed"],
+                        "review_url": review_url,
+                        "eyebrow": "Knowledge Check Retake",
+                        "title": candidate.title,
+                        "subtitle": f"Chapter {ch.order}: {ch.title}",
+                        "status_text": f"Previous quiz score was {ch_state['best_percentage']}%. Complete the chapter reading before retaking, or score ≥ 90% to bypass.",
+                        "button_label": f"📖 Continue Reading Chapter {ch.order} →",
+                        "button_url": review_url,
+                        "primary_button_label": f"📖 Continue Reading Chapter {ch.order} →",
+                        "primary_button_url": review_url,
+                        "secondary_button_label": f"📝 Retake Chapter {ch.order} Quiz",
+                        "secondary_button_url": quiz_url,
+                        "secondary_button_disabled": False,
+                        "lock_reason": None,
+                        "progress_pct": course_summary["pct"],
+                        "completed_chapters": course_summary["completed"],
+                        "total_chapters": course_summary["total"],
+                    }
+                else:
+                    return {
+                        "state": "reading_not_started",
+                        "course": candidate,
+                        "chapter": ch,
+                        "lesson_completed": ch_state["lesson_completed"],
+                        "review_url": review_url,
+                        "eyebrow": "Next in Your Course",
+                        "title": candidate.title,
+                        "subtitle": f"Chapter {ch.order}: {ch.title}",
+                        "status_text": "Lesson review in progress. Complete chapter reading and score ≥ 75% on quiz, or score ≥ 90% to test out directly.",
+                        "button_label": f"📖 Continue Reading Chapter {ch.order} →",
+                        "button_url": review_url,
+                        "primary_button_label": f"📖 Continue Reading Chapter {ch.order} →",
+                        "primary_button_url": review_url,
+                        "secondary_button_label": f"⚡ Try Quiz First (≥90% to bypass)" if ch_state["has_quiz"] else None,
+                        "secondary_button_url": quiz_url,
+                        "secondary_button_disabled": False if ch_state["has_quiz"] else True,
+                        "lock_reason": None,
+                        "progress_pct": course_summary["pct"],
+                        "completed_chapters": course_summary["completed"],
+                        "total_chapters": course_summary["total"],
+                    }
+
+            # Case C: Lesson completed, quiz not passed
             if ch_state["has_quiz"] and not ch_state["quiz_passed"]:
                 if ch_state["has_failed_attempt"]:
                     return {
                         "state": "quiz_not_passed",
                         "course": candidate,
                         "chapter": ch,
+                        "lesson_completed": ch_state["lesson_completed"],
+                        "review_url": review_url,
                         "eyebrow": "Knowledge Check Retake",
                         "title": candidate.title,
                         "subtitle": f"Chapter {ch.order}: {ch.title}",
@@ -251,10 +314,12 @@ def get_dashboard_next_action(user):
                         "state": "quiz_ready",
                         "course": candidate,
                         "chapter": ch,
+                        "lesson_completed": ch_state["lesson_completed"],
+                        "review_url": review_url,
                         "eyebrow": "Knowledge Check Ready",
                         "title": candidate.title,
                         "subtitle": f"Chapter {ch.order}: {ch.title}",
-                        "status_text": "Reading completed. The chapter quiz is ready.",
+                        "status_text": "Reading completed. The chapter quiz is ready (score ≥ 75% to unlock next chapter).",
                         "button_label": f"⚡ Take Chapter {ch.order} Quiz →",
                         "button_url": quiz_url,
                         "primary_button_label": f"⚡ Take Chapter {ch.order} Quiz →",
