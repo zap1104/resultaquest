@@ -27,7 +27,23 @@ from .models import (
     Question,
     Quiz,
     QuizAttempt,
+    UserCourseCompletion,
     UserProfile,
+)
+from .dashboard_service import (
+    get_dashboard_next_action,
+    get_recent_active_courses,
+    get_streak_status,
+)
+from .gamification import (
+    get_achievement_preview,
+    get_active_course_progress,
+    get_leaderboard_standings,
+    get_level_progress,
+    get_tier_info,
+    get_tier_progress,
+    get_user_achievements,
+    get_weekly_momentum,
 )
 from .schemas import GenerationPreferences
 from .services import CourseGenerationError, generate_course_journey, SourceBundleError
@@ -35,6 +51,8 @@ from .services import CourseGenerationError, generate_course_journey, SourceBund
 logger = logging.getLogger(__name__)
 
 QUIZ_PASS_THRESHOLD = 75
+GUIDED_PASS_THRESHOLD = 75
+PRIOR_KNOWLEDGE_THRESHOLD = 90
 LESSON_COMPLETION_XP = 15
 
 REVIEW_ANCHOR_BY_TYPE = {
@@ -102,9 +120,11 @@ def get_best_quiz_percentage(user, chapter):
 
 def get_chapter_completion_state(user, chapter):
     """
-    A chapter is completed when its quiz score reaches 75%, with or without
-    a completed lesson. Reading remains part of the guided learning path,
-    but it is not a separate completion threshold.
+    A chapter can be completed via two distinct routes:
+    1. Guided Learning Route: Lesson reading is marked complete AND the quiz
+       is passed (score >= 75%). If no quiz exists, reading alone completes it.
+    2. Prior Knowledge Route: The learner tests out by scoring >= 90% on the quiz,
+       even without completing the chapter reading.
     """
     lesson_completed = ChapterCompletion.objects.filter(user=user, chapter=chapter).exists()
     best_quiz_percentage = get_best_quiz_percentage(user, chapter)
@@ -113,27 +133,38 @@ def get_chapter_completion_state(user, chapter):
 
     quiz_passed = (
         best_quiz_percentage is not None
-        and best_quiz_percentage >= QUIZ_PASS_THRESHOLD
+        and best_quiz_percentage >= GUIDED_PASS_THRESHOLD
     )
 
-    tested_out = (
+    prior_knowledge_passed = (
         best_quiz_percentage is not None
-        and best_quiz_percentage >= QUIZ_PASS_THRESHOLD
-        and not lesson_completed
+        and best_quiz_percentage >= PRIOR_KNOWLEDGE_THRESHOLD
     )
+
+    tested_out = prior_knowledge_passed and not lesson_completed
 
     if has_quiz:
-        completed = quiz_passed
+        completed = (lesson_completed and quiz_passed) or prior_knowledge_passed
     else:
         completed = lesson_completed
+
+    if completed:
+        if lesson_completed and (not has_quiz or quiz_passed):
+            unlock_route = "guided"
+        else:
+            unlock_route = "prior_knowledge"
+    else:
+        unlock_route = None
 
     return {
         "lesson_completed": lesson_completed,
         "has_quiz": has_quiz,
         "best_quiz_percentage": best_quiz_percentage,
         "quiz_passed": quiz_passed,
+        "prior_knowledge_passed": prior_knowledge_passed,
         "tested_out": tested_out,
         "completed": completed,
+        "unlock_route": unlock_route,
     }
 
 
@@ -224,41 +255,24 @@ def auth_portal(request):
 @login_required
 def dashboard(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
-    courses = list(
-        Course.objects.filter(user=request.user, status="active").prefetch_related(
-            "chapters", "chapters__quiz", "chapters__quiz__attempts"
-        )
-    )
-
-    xp_needed_next = profile.current_level * 100
-    xp_percentage = min(int((profile.total_xp / max(xp_needed_next, 1)) * 100), 100)
-
-    for course in courses:
-        progress = calculate_course_progress(request.user, course)
-        course.progress_pct = progress["percentage"]
-        course.completed_chapter_count = progress["completed_count"]
-        course.total_chapter_count = progress["total_chapters"]
-
-    recent_course = courses[0] if courses else None
+    tier_info = get_tier_info(profile.current_level)
+    streak_status = get_streak_status(profile)
+    next_action = get_dashboard_next_action(request.user)
+    featured_course_id = next_action["course"].pk if next_action.get("course") else None
+    recent_courses = get_recent_active_courses(request.user, limit=3, exclude_course_id=featured_course_id)
+    weekly_momentum = get_weekly_momentum(request.user)
+    achievement_preview = get_achievement_preview(request.user)
     eligibility = get_generation_eligibility(profile)
-
-    unlocked_count = 0
-    if courses:
-        unlocked_count += 1
-    if profile.total_xp >= 20:
-        unlocked_count += 1
-    if profile.streak_days >= 7:
-        unlocked_count += 1
-    if profile.current_level >= 5:
-        unlocked_count += 1
 
     return render(request, "courses/dashboard.html", {
         "profile": profile,
-        "courses": courses,
-        "xp_needed_next": xp_needed_next,
-        "xp_percentage": xp_percentage,
-        "recent_course": recent_course,
-        "unlocked_count": unlocked_count,
+        "tier_info": tier_info,
+        "streak_status": streak_status,
+        "next_action": next_action,
+        "recent_courses": recent_courses,
+        "courses": recent_courses,
+        "weekly_momentum": weekly_momentum,
+        "achievement_preview": achievement_preview,
         "eligibility": eligibility,
     })
 
@@ -494,7 +508,10 @@ def course_detail(request, pk):
         completion_state = get_chapter_completion_state(request.user, chapter)
         chapter.lesson_completed = completion_state["lesson_completed"]
         chapter.quiz_passed = completion_state["quiz_passed"]
+        chapter.prior_knowledge_passed = completion_state["prior_knowledge_passed"]
         chapter.tested_out = completion_state["tested_out"]
+        chapter.unlock_route = completion_state["unlock_route"]
+        chapter.completed = completion_state["completed"]
         chapter.best_quiz_percentage = completion_state["best_quiz_percentage"]
         chapter.previous_chapter = get_previous_chapter(chapter)
 
@@ -506,6 +523,9 @@ def course_detail(request, pk):
         "course_progress_pct": progress["percentage"],
         "completed_count": progress["completed_count"],
         "total_chapters": progress["total_chapters"],
+        "guided_pass_threshold": GUIDED_PASS_THRESHOLD,
+        "prior_knowledge_threshold": PRIOR_KNOWLEDGE_THRESHOLD,
+        "pass_threshold": GUIDED_PASS_THRESHOLD,
     })
 
 
@@ -513,6 +533,12 @@ def course_detail(request, pk):
 def chapter_review(request, pk):
     chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
     course = chapter.course
+
+    profile = getattr(request.user, "userprofile", None)
+    if profile:
+        profile.last_opened_course = course
+        profile.last_opened_chapter = chapter
+        profile.save(update_fields=["last_opened_course", "last_opened_chapter"])
 
     chapter_status = get_chapter_status(request.user, chapter)
     if chapter_status == "locked":
@@ -528,7 +554,9 @@ def chapter_review(request, pk):
             "prev_chapter": previous_chapter,
             "previous_state": previous_state,
             "course": course,
-            "pass_threshold": QUIZ_PASS_THRESHOLD,
+            "guided_threshold": GUIDED_PASS_THRESHOLD,
+            "prior_knowledge_threshold": PRIOR_KNOWLEDGE_THRESHOLD,
+            "pass_threshold": GUIDED_PASS_THRESHOLD,
         }, status=403)
 
     progress = calculate_course_progress(request.user, course)
@@ -560,13 +588,17 @@ def chapter_review(request, pk):
         "is_completed": completion_state["lesson_completed"],
         "chapter_fully_completed": completion_state["completed"],
         "quiz_passed": completion_state["quiz_passed"],
+        "prior_knowledge_passed": completion_state["prior_knowledge_passed"],
         "tested_out": completion_state["tested_out"],
+        "unlock_route": completion_state["unlock_route"],
         "best_quiz_percentage": completion_state["best_quiz_percentage"],
         "has_read_to_end": has_read_to_end(request, chapter),
         "total_chapters": progress["total_chapters"],
         "completed_count": progress["completed_count"],
         "course_progress_pct": progress["percentage"],
-        "pass_threshold": QUIZ_PASS_THRESHOLD,
+        "guided_threshold": GUIDED_PASS_THRESHOLD,
+        "prior_knowledge_threshold": PRIOR_KNOWLEDGE_THRESHOLD,
+        "pass_threshold": GUIDED_PASS_THRESHOLD,
     })
 
 
@@ -683,14 +715,28 @@ def chapter_rename(request, pk):
 @login_required
 def chapter_quiz(request, pk):
     chapter = get_object_or_404(Chapter, pk=pk, course__user=request.user)
+
+    profile = getattr(request.user, "userprofile", None)
+    if profile:
+        profile.last_opened_course = chapter.course
+        profile.last_opened_chapter = chapter
+        profile.save(update_fields=["last_opened_course", "last_opened_chapter"])
     if get_chapter_status(request.user, chapter) == "locked":
         previous_chapter = get_previous_chapter(chapter)
+        previous_state = (
+            get_chapter_completion_state(request.user, previous_chapter)
+            if previous_chapter
+            else None
+        )
         return render(request, "courses/chapter_locked.html", {
             "chapter": chapter,
             "previous_chapter": previous_chapter,
             "prev_chapter": previous_chapter,
+            "previous_state": previous_state,
             "course": chapter.course,
-            "pass_threshold": QUIZ_PASS_THRESHOLD,
+            "guided_threshold": GUIDED_PASS_THRESHOLD,
+            "prior_knowledge_threshold": PRIOR_KNOWLEDGE_THRESHOLD,
+            "pass_threshold": GUIDED_PASS_THRESHOLD,
         }, status=403)
 
     quiz = getattr(chapter, "quiz", None)
@@ -804,6 +850,7 @@ def _grade_question(question, submitted_answer):
                 "is_correct": (earned_points == max_points),
                 "matched_items": matched_items,
                 "missing_items": missing_items,
+                "expected_items": [exp["canonical"] for exp in expected_items],
                 "order_matters": order_matters,
             },
         )
@@ -833,12 +880,19 @@ def check_quiz_answer(request, pk):
         Question.objects.prefetch_related("choices"), pk=question_id, quiz=quiz
     )
     earned_points, maximum_points, feedback = _grade_question(question, submitted_answer)
+    status_label = (
+        "correct"
+        if earned_points >= maximum_points and maximum_points > 0
+        else ("partial" if earned_points > 0 else "incorrect")
+    )
 
     return JsonResponse({
         "question_id": question.id,
         "question_type": question.question_type,
         "earned_points": earned_points,
+        "points_awarded": earned_points,
         "maximum_points": maximum_points,
+        "status": status_label,
         "explanation": question.explanation,
         **feedback,
     })
@@ -1008,15 +1062,64 @@ def submit_quiz(request, pk=None, chapter_id=None):
     if profile and hasattr(profile, "record_study_activity"):
         profile.record_study_activity()
 
+    post_completion_state = get_chapter_completion_state(request.user, chapter)
+
     return JsonResponse({
         "score": float(total_earned),
         "maximum_score": float(total_max),
         "total_questions": int(total_max),
         "percentage": percentage,
         "passed": passed,
+        "guided_passed": percentage >= GUIDED_PASS_THRESHOLD,
+        "prior_knowledge_passed": percentage >= PRIOR_KNOWLEDGE_THRESHOLD,
+        "chapter_completed": post_completion_state["completed"],
+        "unlock_route": post_completion_state["unlock_route"],
         "xp_earned": xp_delta,
         "new_level": getattr(profile, "current_level", 1) if profile else 1,
         "new_streak": getattr(profile, "streak_days", 0) if profile else 0,
         "review_items": review_items,
         "results": review_items,
     })
+
+
+# --------------------------------------------------
+# 6. GAMIFICATION: PROFILE & RANK/TIER LEADERBOARD
+# --------------------------------------------------
+@login_required
+def profile_view(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    level_progress = get_level_progress(profile.total_xp, profile.current_level)
+    tier_progress = get_tier_progress(profile.current_level, profile.total_xp)
+    completed_courses_count = UserCourseCompletion.objects.filter(user=request.user).count()
+    active_courses = get_active_course_progress(request.user, limit=6)
+    achievements = get_user_achievements(request.user)
+
+    context = {
+        "profile": profile,
+        "level_progress": level_progress,
+        "tier_progress": tier_progress,
+        "completed_courses_count": completed_courses_count,
+        "active_courses": active_courses,
+        "achievements": achievements,
+    }
+    return render(request, "courses/profile.html", context)
+
+
+@login_required
+def leaderboard_view(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    tier_progress = get_tier_progress(profile.current_level, profile.total_xp)
+    level_progress = get_level_progress(profile.total_xp, profile.current_level)
+    weekly_momentum = get_weekly_momentum(request.user)
+    standings_data = get_leaderboard_standings(request.user, limit=25)
+
+    context = {
+        "profile": profile,
+        "tier_progress": tier_progress,
+        "level_progress": level_progress,
+        "weekly_momentum": weekly_momentum,
+        "standings": standings_data["standings"],
+        "current_user_rank": standings_data["current_user_rank"],
+        "total_learners": standings_data["total_learners"],
+    }
+    return render(request, "courses/leaderboard.html", context)
